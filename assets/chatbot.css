@@ -1,0 +1,562 @@
+/* AI Chatbot — chatbot.css
+   Scoped under #aicb-root to avoid theme conflicts.
+   Uses CSS custom properties set by JS from admin settings.
+*/
+
+/* ── Reset / Base ─────────────────────────────────────── */
+#aicb-root *,
+#aicb-root *::before,
+#aicb-root *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+#aicb-root {
+  --aicb-color: #2563eb;
+  --aicb-color-dark: #1d4ed8;
+  --aicb-radius: 16px;
+  --aicb-shadow: 0 8px 32px rgba(0,0,0,.18);
+  --aicb-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --aicb-z: 999999;
+  font-family: var(--aicb-font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a1a;
+}
+
+/* ── Floating button (right / left) ───────────────────── */
+#aicb-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: var(--aicb-z);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--aicb-color);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--aicb-shadow);
+  transition: transform .2s, background .2s;
+  outline: none;
+}
+#aicb-toggle:hover,
+#aicb-toggle:focus-visible {
+  background: var(--aicb-color-dark);
+  transform: scale(1.08);
+}
+#aicb-toggle:focus-visible {
+  outline: 3px solid var(--aicb-color);
+  outline-offset: 3px;
+}
+#aicb-root[data-pos="left"] #aicb-toggle {
+  right: auto;
+  left: 24px;
+}
+
+/* ── Vertical pull-out tab ────────────────────────────── */
+#aicb-tab {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: var(--aicb-z);
+  background: var(--aicb-color);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  transform: translateY(-50%) rotate(180deg);
+  padding: 14px 10px;
+  border-radius: 8px 0 0 8px;
+  font-family: var(--aicb-font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--aicb-shadow);
+  transition: background .2s;
+  outline: none;
+}
+#aicb-tab:hover,
+#aicb-tab:focus-visible {
+  background: var(--aicb-color-dark);
+}
+#aicb-tab:focus-visible {
+  outline: 3px solid var(--aicb-color);
+  outline-offset: 3px;
+}
+#aicb-root[data-pos="tab-left"] #aicb-tab {
+  right: auto;
+  left: 0;
+  border-radius: 0 8px 8px 0;
+  transform: translateY(-50%) rotate(0deg);
+}
+#aicb-tab .aicb-tab-icon {
+  font-size: 18px;
+  writing-mode: horizontal-tb;
+  transform: none;
+}
+
+/* ── Chat window ──────────────────────────────────────── */
+#aicb-window {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  z-index: var(--aicb-z);
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  max-height: 540px;
+  background: #fff;
+  border-radius: var(--aicb-radius);
+  box-shadow: var(--aicb-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-origin: bottom right;
+  transition: opacity .2s, transform .2s;
+}
+#aicb-root[data-pos="left"] #aicb-window {
+  right: auto;
+  left: 24px;
+  transform-origin: bottom left;
+}
+#aicb-root[data-pos^="tab-right"] #aicb-window {
+  bottom: auto;
+  top: 50%;
+  right: 0;
+  transform-origin: right center;
+}
+#aicb-root[data-pos^="tab-left"] #aicb-window {
+  bottom: auto;
+  top: 50%;
+  left: 0;
+  right: auto;
+  transform-origin: left center;
+}
+
+/* Hidden state */
+#aicb-window[hidden] {
+  display: none !important;
+}
+#aicb-window.aicb-animate-in {
+  animation: aicbSlideIn .2s ease;
+}
+@keyframes aicbSlideIn {
+  from { opacity: 0; transform: scale(.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0);   }
+}
+
+/* ── Header ───────────────────────────────────────────── */
+#aicb-header {
+  background: var(--aicb-color);
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#aicb-header-title {
+  font-weight: 700;
+  font-size: 15px;
+  flex: 1;
+}
+#aicb-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.85);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color .15s, background .15s;
+}
+#aicb-close:hover,
+#aicb-close:focus-visible {
+  color: #fff;
+  background: rgba(255,255,255,.15);
+}
+#aicb-close:focus-visible { outline: 2px solid #fff; }
+
+/* ── Messages ─────────────────────────────────────────── */
+#aicb-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
+.aicb-msg {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.aicb-msg.aicb-bot {
+  background: #f0f4ff;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.aicb-msg.aicb-user {
+  background: var(--aicb-color);
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+.aicb-msg.aicb-error {
+  background: #fff0f0;
+  color: #b91c1c;
+  align-self: flex-start;
+  border: 1px solid #fecaca;
+}
+
+/* ── Typing indicator ─────────────────────────────────── */
+.aicb-typing {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 10px 14px;
+  background: #f0f4ff;
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+  width: fit-content;
+}
+.aicb-typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--aicb-color);
+  opacity: .5;
+  animation: aicbDot 1.2s infinite;
+}
+.aicb-typing span:nth-child(2) { animation-delay: .2s; }
+.aicb-typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes aicbDot {
+  0%, 80%, 100% { transform: scale(1); opacity: .4; }
+  40%           { transform: scale(1.3); opacity: 1; }
+}
+
+/* ── Input area ───────────────────────────────────────── */
+#aicb-form {
+  padding: 12px 16px;
+  border-top: 1px solid #e8ecf0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+#aicb-input {
+  flex: 1;
+  border: 1.5px solid #d1d9e0;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: var(--aicb-font);
+  font-size: 14px;
+  resize: none;
+  min-height: 40px;
+  max-height: 120px;
+  transition: border-color .15s;
+  outline: none;
+  line-height: 1.5;
+}
+#aicb-input:focus {
+  border-color: var(--aicb-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--aicb-color) 20%, transparent);
+}
+#aicb-send {
+  background: var(--aicb-color);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s, transform .1s;
+  outline: none;
+}
+#aicb-send:hover { background: var(--aicb-color-dark); }
+#aicb-send:active { transform: scale(.94); }
+#aicb-send:focus-visible { outline: 3px solid var(--aicb-color); outline-offset: 2px; }
+#aicb-send:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Dynamic Support Handover Layout [1.6.1] ── */
+.aicb-handover-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding-left: 14px;
+    padding-right: 14px;
+}
+
+.aicb-btn {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: var(--aicb-btn-radius, 4px) !important;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none !important;
+    text-align: center;
+    flex: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, filter 0.15s ease;
+}
+
+.aicb-btn-primary {
+    background-color: var(--aicb-color) !important;
+    color: var(--aicb-p-btn-text, #ffffff) !important;
+}
+
+.aicb-btn-primary:hover,
+.aicb-btn-primary:focus {
+    filter: brightness(90%); /* Dynamic color darken effect */
+}
+
+.aicb-btn-secondary {
+    background-color: var(--aicb-s-btn-bg, #f1f5f9) !important;
+    color: var(--aicb-s-btn-text, #334155) !important;
+    border: 1px solid #cbd5e1;
+}
+
+.aicb-btn-secondary:hover,
+.aicb-btn-secondary:focus {
+    filter: brightness(95%);
+}
+
+/* ── Powered-by footer ────────────────────────────────── */
+#aicb-footer {
+  text-align: center;
+  font-size: 11px;
+  color: #aaa;
+  padding: 4px 0 8px;
+}
+
+/* ── Reduced motion ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  #aicb-window, #aicb-toggle { transition: none; }
+  .aicb-typing span { animation: none; opacity: .6; }
+  .aicb-window.aicb-animate-in { animation: none; }
+}
+
+/* ── Mobile ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  #aicb-window {
+    width: 100vw;
+    max-width: 100vw;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    border-radius: var(--aicb-radius) var(--aicb-radius) 0 0;
+    max-height: 70vh;
+  }
+  #aicb-root[data-pos="left"] #aicb-window { left: 0; }
+}
+
+/* ==========================================================================
+   VERTICAL TAB - SLIDE OUT OVERRIDES (WCAG 2.2 AA COMPLIANT)
+   ========================================================================== */
+
+/* ── 1. RIGHT EDGE VERTICAL TAB (SLIDE-OUT) ── */
+
+/* Right Tab Launcher: Flat on Right, Rounded on Left */
+#aicb-root.tab-right #aicb-tab {
+    position: fixed !important;
+    right: 0 !important;
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: translateY(-50%) !important; /* Fixed vertical centering, no block rotation */
+    width: 44px !important;
+    height: 140px !important;
+    border-top-left-radius: 12px !important;
+    border-bottom-left-radius: 12px !important;
+    border-top-right-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+    background-color: var(--aicb-primary-color, #2563eb) !important;
+    box-shadow: -3px 0 10px rgba(0,0,0,0.12) !important;
+    display: flex !important;
+    flex-direction: row !important; /* Arranges the icon and text inline along the vertical axis */
+    align-items: center !important; /* Nicely centers the icon and text horizontally inside the tab */
+    justify-content: center !important; /* Centers the content vertically inside the tab */
+    gap: 8px !important; /* Spacing between icon and vertical text */
+    padding: 14px 0 !important;
+    cursor: pointer !important;
+    z-index: 999999 !important;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.15s ease !important;
+    writing-mode: vertical-rl !important;
+    text-orientation: mixed !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    font-size: 11px !important;
+    border: none !important;
+}
+
+/* Force standard, upright rotation of the robot emoji icon inside the Right Tab */
+#aicb-root.tab-right #aicb-tab .aicb-tab-icon {
+    transform: rotate(90deg) !important; /* Counteracts vertical text rotation to stand upright */
+    margin: 0 !important; /* Margin cleared to let the container's gap handle spacing */
+    display: inline-block !important;
+    width: 22px !important;
+    height: 22px !important;
+    line-height: 1 !important;
+}
+
+/* Right Edge Chat Window: Base layout */
+#aicb-root.tab-right #aicb-window {
+    position: fixed !important;
+    right: -400px !important; 
+    top: 50% !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: translateY(-50%) !important;
+    width: 370px !important;
+    max-height: 85vh !important;
+    height: 560px !important;
+    z-index: 999998 !important;
+    border-top-left-radius: 16px !important;
+    border-bottom-left-radius: 16px !important;
+    border-top-right-radius: 0px !important;
+    border-bottom-right-radius: 0px !important;
+    box-shadow: -5px 0 25px rgba(0,0,0,0.15) !important;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+/* Closed State: Override native hidden using flex to preserve interior layout [1] */
+#aicb-root.tab-right #aicb-window[hidden] {
+    display: flex !important; /* Changed from block to flex to keep the input area at the bottom */
+    visibility: hidden !important; /* Hidden from keyboard and accessibility but kept in DOM for transition */
+    right: -400px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+/* Opened State: Slide-out active trigger */
+#aicb-root.tab-right #aicb-window:not([hidden]) {
+    display: flex !important; /* Changed from block to flex to keep the input area at the bottom */
+    visibility: visible !important;
+    right: 0 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+/* Tab Shifting: Shift launcher tab left by 370px when window is open */
+#aicb-root.tab-right:has(#aicb-window:not([hidden])) #aicb-tab {
+    right: 370px !important;
+}
+
+
+/* ── 2. LEFT EDGE VERTICAL TAB (SLIDE-OUT) ── */
+
+/* Left Tab Launcher: Flat on Left, Rounded on Right */
+#aicb-root.tab-left #aicb-tab {
+    position: fixed !important;
+    left: 0 !important;
+    top: 50% !important;
+    bottom: auto !important;
+    right: auto !important;
+    transform: translateY(-50%) !important; /* Fixed vertical centering, no block rotation */
+    width: 44px !important;
+    height: 140px !important;
+    border-top-right-radius: 12px !important;
+    border-bottom-right-radius: 12px !important;
+    border-top-left-radius: 0px !important;
+    border-bottom-left-radius: 0px !important;
+    background-color: var(--aicb-primary-color, #2563eb) !important;
+    box-shadow: 3px 0 10px rgba(0,0,0,0.12) !important;
+    display: flex !important;
+    flex-direction: row !important; /* Arranges the icon and text inline along the vertical axis */
+    align-items: center !important; /* Nicely centers the icon and text horizontally inside the tab */
+    justify-content: center !important; /* Centers the content vertically inside the tab */
+    gap: 8px !important; /* Spacing between icon and vertical text */
+    padding: 14px 0 !important;
+    cursor: pointer !important;
+    z-index: 999999 !important;
+    transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.15s ease !important;
+    writing-mode: vertical-rl !important;
+    text-orientation: mixed !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    font-size: 11px !important;
+    border: none !important;
+}
+
+/* Force standard, upright rotation of the robot emoji icon inside the Left Tab */
+#aicb-root.tab-left #aicb-tab .aicb-tab-icon {
+    transform: rotate(90deg) !important; /* Counteracts vertical text rotation to stand upright */
+    margin: 0 !important; /* Margin cleared to let the container's gap handle spacing */
+    display: inline-block !important;
+    width: 22px !important;
+    height: 22px !important;
+    line-height: 1 !important;
+}
+
+/* Left Edge Chat Window: Base layout */
+#aicb-root.tab-left #aicb-window {
+    position: fixed !important;
+    left: -400px !important; /* Hidden offscreen by default */
+    top: 50% !important;
+    bottom: auto !important;
+    right: auto !important;
+    transform: translateY(-50%) !important;
+    width: 370px !important;
+    max-height: 85vh !important;
+    height: 560px !important;
+    z-index: 999998 !important;
+    border-top-right-radius: 16px !important;
+    border-bottom-right-radius: 16px !important;
+    border-top-left-radius: 0px !important;
+    border-bottom-left-radius: 0px !important;
+    box-shadow: 5px 0 25px rgba(0,0,0,0.15) !important;
+    transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+/* Closed State: Override native hidden using flex to preserve interior layout [1] */
+#aicb-root.tab-left #aicb-window[hidden] {
+    display: flex !important; /* Changed from block to flex to keep the input area at the bottom */
+    visibility: hidden !important; /* Hidden from keyboard and accessibility but kept in DOM for transition */
+    left: -400px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+/* Opened State: Slide-out active trigger */
+#aicb-root.tab-left #aicb-window:not([hidden]) {
+    display: flex !important; /* Changed from block to flex to keep the input area at the bottom */
+    visibility: visible !important;
+    left: 0 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s ease, visibility 0.3s ease !important;
+}
+
+/* Tab Shifting: Shift launcher tab right by 370px when window is open */
+#aicb-root.tab-left:has(#aicb-window:not([hidden])) #aicb-tab {
+    left: 370px !important;
+}

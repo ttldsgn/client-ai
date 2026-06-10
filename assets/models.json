@@ -1,0 +1,192 @@
+{
+  "providers": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic (Claude)",
+      "website": "https://console.anthropic.com",
+      "key_label": "Anthropic API Key",
+      "key_help": "Get your key at console.anthropic.com → API Keys",
+      "docs_url": "https://docs.anthropic.com",
+      "models": [
+        {
+          "id": "claude-haiku-4-5-20251001",
+          "name": "Claude Haiku 4.5",
+          "description": "Fastest & cheapest — great for high-traffic sites",
+          "context_k": 200,
+          "recommended": false,
+          "supports_tools": true
+        },
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4",
+          "description": "Best balance of speed, quality and cost",
+          "context_k": 200,
+          "recommended": true,
+          "supports_tools": true
+        },
+        {
+          "id": "claude-opus-4-20250514",
+          "name": "Claude Opus 4",
+          "description": "Most capable — complex reasoning and analysis",
+          "context_k": 200,
+          "recommended": false,
+          "supports_tools": true
+        }
+      ]
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "website": "https://console.groq.com",
+      "key_label": "Groq API Key",
+      "key_help": "Get your key at console.groq.com → API Keys",
+      "docs_url": "https://console.groq.com/docs",
+      "models": [
+        {
+          "id": "llama-3.3-70b-versatile",
+          "name": "Llama 3.3 70B Versatile",
+          "description": "Best quality on Groq — excellent for Q&A",
+          "context_k": 128,
+          "recommended": true,
+          "supports_tools": true
+        },
+        {
+          "id": "llama-3.1-8b-instant",
+          "name": "Llama 3.1 8B Instant",
+          "description": "Ultra-fast, lower cost — good for simple questions",
+          "context_k": 128,
+          "recommended": false,
+          "supports_tools": true
+        },
+        {
+          "id": "gemma2-9b-it",
+          "name": "Gemma 2 9B",
+          "description": "Google's open model via Groq — efficient and capable",
+          "context_k": 8,
+          "recommended": false,
+          "supports_tools": true
+        }
+      ]
+    },
+    {
+      "id": "google",
+      "name": "Google AI Studio (Gemini)",
+      "website": "https://aistudio.google.com",
+      "key_label": "Google AI Studio API Key",
+      "key_help": "Get your key at aistudio.google.com → Get API Key",
+      "docs_url": "https://ai.google.dev/docs",
+      "models": [
+        {
+          "id": "gemini-2.0-flash",
+          "name": "Gemini 2.0 Flash",
+          "description": "Fastest Gemini — great speed/quality balance",
+          "context_k": 1000,
+          "recommended": true,
+          "supports_tools": true
+        },
+        {
+          "id": "gemini-2.0-flash-lite",
+          "name": "Gemini 2.0 Flash-Lite",
+          "description": "Lightest and cheapest Gemini option",
+          "context_k": 1000,
+          "recommended": false,
+          "supports_tools": true
+        }
+      ]
+    },
+    {
+      "id": "cerebras",
+      "name": "Cerebras",
+      "website": "https://cloud.cerebras.ai",
+      "key_label": "Cerebras API Key",
+      "key_help": "Get your key at cloud.cerebras.ai → API Keys",
+      "docs_url": "https://inference-docs.cerebras.ai",
+      "models": [
+        {
+          "id": "llama3.3-70b",
+          "name": "Llama 3.3 70B",
+          "description": "Top Cerebras model — extremely fast inference",
+          "context_k": 128,
+          "recommended": true,
+          "supports_tools": true
+        },
+        {
+          "id": "llama3.1-8b",
+          "name": "Llama 3.1 8B",
+          "description": "Fastest Cerebras option — good for quick Q&A",
+          "context_k": 128,
+          "recommended": false,
+          "supports_tools": true
+        },
+        {
+          "id": "qwen-3-32b",
+          "name": "Qwen 3 32B",
+          "description": "Strong reasoning and instruction-following",
+          "context_k": 32,
+          "recommended": false,
+          "supports_tools": true
+        }
+      ]
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral AI",
+      "website": "https://console.mistral.ai",
+      "key_label": "Mistral API Key",
+      "key_help": "Get your key at console.mistral.ai → API Keys",
+      "docs_url": "https://docs.mistral.ai",
+      "models": [
+        {
+          "id": "mistral-small-latest",
+          "name": "Mistral Small",
+          "description": "Fast and cost-effective — great for chat",
+          "context_k": 32,
+          "recommended": false,
+          "supports_tools": true
+        },
+        {
+          "id": "mistral-medium-latest",
+          "name": "Mistral Medium",
+          "description": "Balanced performance — recommended for most sites",
+          "context_k": 32,
+          "recommended": true,
+          "supports_tools": true
+        },
+        {
+          "id": "mistral-large-latest",
+          "name": "Mistral Large",
+          "description": "Most capable Mistral — complex reasoning",
+          "context_k": 128,
+          "recommended": false,
+          "supports_tools": true
+        },
+        {
+          "id": "open-mistral-nemo",
+          "name": "Mistral Nemo",
+          "description": "Open-weight, multilingual, very efficient",
+          "context_k": 128,
+          "recommended": false,
+          "supports_tools": true
+        }
+      ]
+    },
+    {
+      "id": "custom",
+      "name": "Custom / Self-hosted",
+      "website": "",
+      "key_label": "API Key (if required)",
+      "key_help": "For OpenAI-compatible endpoints, local Ollama, LM Studio, etc.",
+      "docs_url": "",
+      "models": [
+        {
+          "id": "custom-model",
+          "name": "Custom Model",
+          "description": "Model ID sent to your custom endpoint",
+          "context_k": 0,
+          "recommended": false,
+          "supports_tools": true
+        }
+      ]
+    }
+  ]
+}
