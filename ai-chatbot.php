@@ -1,10 +1,10 @@
 <?php
 /**
- * Plugin Name:  AI Chatbot (Modular)
- * Plugin URI:   https://example.com/ai-chatbot
- * Description:  Floating AI chatbot supporting Anthropic, Groq, Google AI Studio, Cerebras, Mistral, and custom endpoints (Modular Version).
- * Version:      2.2.8
- * Author:       Your Name
+ * Plugin Name:  ClientAI
+ * Plugin URI:   https://totaldsgn.com
+ * Description:  Floating AI chatbot supporting Anthropic, Groq, Google AI Studio, Cerebras, Mistral, and custom endpoints.
+ * Version:      3.0
+ * Author:       ttldsgn
  * License:      GPL-2.0+
  * Text Domain:  ai-chatbot
  */
