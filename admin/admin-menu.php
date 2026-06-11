@@ -51,12 +51,30 @@ function aicb_admin_styles() {
         .aicb-tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;vertical-align:middle}
         .aicb-tag-provider{background:#e0f2fe;color:#0369a1}
         
-        /* Auto-complete lists styles for clean dropdown lists */
         .ui-autocomplete {
             max-height: 250px;
             overflow-y: auto;
             overflow-x: hidden;
             z-index: 999999 !important;
+        }
+
+        /* Styles for expandable advanced prompt engineer section */
+        .aicb-advanced-toggle-btn {
+            display: inline-block;
+            background: #f1f5f9;
+            color: #334155;
+            padding: 10px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            border: 1px solid #cbd5e1;
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .aicb-advanced-toggle-btn:hover {
+            background: #e2e8f0;
+            color: #0f172a;
         }
     </style>
     <?php
@@ -66,7 +84,7 @@ add_action( 'admin_enqueue_scripts', 'aicb_admin_enqueue_scripts' );
 function aicb_admin_enqueue_scripts( $hook_suffix ) {
     if ( strpos( $hook_suffix, 'ai-chatbot-calendar' ) !== false ) {
         wp_enqueue_script( 'jquery-ui-datepicker' );
-        wp_enqueue_script( 'jquery-ui-autocomplete' ); // Enqueue native WP autocomplete logic
+        wp_enqueue_script( 'jquery-ui-autocomplete' ); 
         wp_enqueue_style( 'jquery-ui-style', 'https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css', [], '1.12.1' );
     }
 }
@@ -75,7 +93,6 @@ add_action( 'admin_footer', 'aicb_admin_calendar_js' );
 function aicb_admin_calendar_js() {
     $screen = get_current_screen();
     if ( $screen && strpos( $screen->id, 'ai-chatbot-calendar' ) !== false ) {
-        // Build auto-complete dynamic array
         $countries = aicb_get_available_countries();
         $autocomplete_data = [];
         foreach ( $countries as $c ) {
@@ -96,7 +113,6 @@ function aicb_admin_calendar_js() {
             
             var countries = <?php echo wp_json_encode( $autocomplete_data ); ?>;
 
-            // Initialize WordPress native jQuery UI Autocomplete
             $('#seed_country_search').autocomplete({
                 source: countries,
                 minLength: 0,
@@ -104,7 +120,6 @@ function aicb_admin_calendar_js() {
                     $('#seed_country_code').val(ui.item.code);
                 }
             }).focus(function() {
-                // Instantly open the complete country list on a single click or focus
                 $(this).autocomplete('search', $(this).val());
             });
         });
@@ -200,6 +215,23 @@ function aicb_handle_manual_cache_flush() {
     }
 }
 
+/**
+ * Handle native prompt resets back to standard original values.
+ */
+add_action( 'admin_init', 'aicb_handle_manual_prompt_reset' );
+function aicb_handle_manual_prompt_reset() {
+    if ( isset( $_POST['aicb_reset_prompts_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_reset_prompts_nonce'] ) ), 'aicb_reset_prompts' ) ) {
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+        
+        $defaults = aicb_default_options();
+        $prompt_keys = [ 'prompt_temporal_pivot', 'prompt_tool_instruction', 'prompt_negative_constraints', 'system_prompt' ];
+        foreach ( $prompt_keys as $key ) {
+            update_option( 'aicb_' . $key, $defaults[ $key ] );
+        }
+        add_settings_error( 'aicb_options', 'prompts_reset', 'All AI prompt engineering templates have been successfully reset to default schemas.', 'updated' );
+    }
+}
+
 add_action( 'add_meta_boxes', 'aicb_add_meta_box' );
 function aicb_add_meta_box() {
     $allowed_types = (array) aicb_opt( 'indexed_post_types' );
@@ -220,7 +252,7 @@ function aicb_meta_box_callback( $post ) {
 
 add_action( 'save_post', 'aicb_save_meta_box' );
 function aicb_save_meta_box( $post_id ) {
-    if ( ! isset( $_POST['aicb_meta_box_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_save_meta_box' ) ) return;
+    if ( ! isset( $_POST['aicb_meta_box_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_meta_box_save' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_post', $post_id ) ) return;
     delete_post_meta( $post_id, '_aicb_page_digest' );

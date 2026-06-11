@@ -146,14 +146,16 @@ function aicb_ajax_chat() {
         }
     }
 
-    $temporal_pivot = "\n\n--- TEMPORAL CONTEXT ---\nToday's Date: " . wp_date( 'l, F j, Y' ) . "\nCurrent Time: " . wp_date( 'g:i A' ) . "\nUse this to compute relative dates when calling available tools.";
+    // Load and interpolate the dynamic, editable temporal pivot prompt
+    $temporal_pivot_raw = aicb_opt( 'prompt_temporal_pivot' );
+    $temporal_pivot_raw = str_replace( '{current_date}', wp_date( 'l, F j, Y' ), $temporal_pivot_raw );
+    $temporal_pivot_raw = str_replace( '{current_time}', wp_date( 'g:i A' ), $temporal_pivot_raw );
+    $temporal_pivot     = "\n\n--- TEMPORAL CONTEXT ---\n" . $temporal_pivot_raw;
 
+    // Load editable tool instruction sub-prompt
     $tool_instruction = "";
     if ( aicb_opt( 'enable_calendar_tools' ) ) {
-        $tool_instruction = "\n\n- TOOL USE: You have access to a `check_calendar` tool. Whenever the user asks about business hours, holiday closures, or whether you are open on a specific day, call this tool."
-            . "\n- TOOL VS FAQ: After receiving the tool result, check the 'source' field. If 'source' is 'default' (meaning no specific entry exists in the calendar for that date), check the CORE BUSINESS RULES & FAQS for any rule about the specific holiday or date. If the FAQ provides a more specific rule (e.g., 'Closed on Holidays', 'Open Christmas 10-1'), honor the FAQ as an override. If the FAQ is silent on the specific date, use the tool result. If 'source' is 'entry' (a specific calendar entry was found), use the tool result directly."
-            . "\n- DATE ACCURACY: Use Today's Date (from TEMPORAL CONTEXT) to resolve relative day references (e.g., 'tomorrow', 'next Monday', 'this weekend') into a YYYY-MM-DD string for the tool."
-            . "\n- NO RAW DATE REASONING: Never output reasoning about weekday vs weekend or holiday logic in your response. Let the tool determine the status and hours. After receiving the tool result, answer the user naturally and concisely.";
+        $tool_instruction = "\n\n" . aicb_opt( 'prompt_tool_instruction' );
     }
 
     $business_name = aicb_opt( 'business_name' );
@@ -180,12 +182,8 @@ function aicb_ajax_chat() {
         $tone_prompt = "\n- TONE: Professional, polite, authoritative, and helpful.";
     }
 
-    $negative_constraints = "\n- CONSISTENCY: Your answer must be internally consistent. Never state two facts that contradict each other. Never start a sentence with 'but', 'however', or 'although' — your answer must be a single, decisive statement with no hedging."
-        . "\n- CONTEXT LEAK SAFEGUARD: Never mention the words 'context', 'reference block', 'database', 'page title', 'home page', or 'provided context' in your response. Answer as if you naturally and confidently know the information."
-        . "\n- LENGTH RESTRICTION: Keep your answers concise. For simple factual questions, use 1-2 sentences. For questions involving relative dates (today/tomorrow/this week) or logical reasoning, up to 4 sentences is acceptable — but never write more than needed. Do not list other irrelevant page sections or links unless explicitly requested by the user."
-        . "\n- DIRECTNESS: When the answer is clearly found in the CORE BUSINESS RULES & FAQS, answer directly from them. Do not second-guess or cross-reference page content for potential conflicts when the rules already provide a clear answer."
-        . "\n- NO FEDERAL REFERENCE: Never use the terms 'federal', 'federal holiday', or 'federal holidays' when describing holiday closures or schedules. Always refer to them simply as 'holidays' or by their specific local name (e.g., 'Closed for Canada Day', 'Closed because of the holiday')."
-        . "\n- INTEGRITY: Use the CORE BUSINESS RULES and ACTIVE KNOWLEDGE REFERENCE together to reason accurately about the question. After determining the answer, output ONLY your final clean conclusion — never include the reasoning steps, alternative scenarios, or conditional statements in your response.";
+    // Load dynamic negative constraints prompt
+    $negative_constraints = "\n" . aicb_opt( 'prompt_negative_constraints' );
 
     $system_prompt = aicb_opt( 'system_prompt' ) . "\n\n" . $identity_prompt . $perspective_prompt . $tone_prompt . $temporal_pivot . $tool_instruction . $negative_constraints . $custom_kb . $page_context;
     $provider = aicb_opt( 'provider' );
@@ -280,9 +278,9 @@ function aicb_get_handover_url() {
     $type   = aicb_opt( 'handover_type' );
     $target = aicb_opt( 'handover_target' );
     switch ( $type ) {
-        case 'whatsapp': return 'https://wa.me/' . preg_replace( '/[^0-9]/', '', $target );
-        case 'tel':      return 'tel:' . preg_replace( '/[^0-9+]/', '', $target );
-        case 'sms':      return 'sms:' . preg_replace( '/[^0-9+]/', '', $target );
-        default:         return esc_url_raw( $target );
+        case 'whatsapp' : return 'https://wa.me/' . preg_replace( '/[^0-9]/', '', $target );
+        case 'tel'      : return 'tel:' . preg_replace( '/[^0-9+]/', '', $target );
+        case 'sms'      : return 'sms:' . preg_replace( '/[^0-9+]/', '', $target );
+        default         : return esc_url_raw( $target );
     }
 }

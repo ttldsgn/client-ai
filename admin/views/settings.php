@@ -110,7 +110,7 @@
                 <td>
                     <label>
                         <input type="checkbox" name="aicb_enable_cache" value="1" <?= checked( aicb_opt('enable_cache'), 1 ) ?> />
-                        Cache condensed factual summaries of pages to reduce API token usage (Recommended)
+                        Cache condensed summaries of pages to reduce API token usage (Recommended)
                     </label>
                 </td>
             </tr>
@@ -401,7 +401,51 @@
         </table>
     </div>
 
+    <!-- ── DYNAMIC ADVANCED PROMPT ENGINEERING PANEL (COLLAPSIBLE) ── -->
+    <div style="margin-top: 25px; margin-bottom: 25px;">
+        <button type="button" class="aicb-advanced-toggle-btn" id="aicb-toggle-advanced-prompts">🛠️ Show Advanced Prompt Engineering Options</button>
+    </div>
+
+    <div id="aicb-advanced-prompts-panel" class="aicb-section" style="display: none;">
+        <h2>Advanced Prompt Engineering Templates</h2>
+        <p style="color:#555;margin-top:-8px">Exposes the granular sub-prompts used to coordinate and instruct the model's factual, temporal, and tool-calling processes.</p>
+        
+        <table class="form-table">
+            <tr>
+                <th style="width:200px;"><label for="prompt_temporal_pivot">Temporal Context Prompt</label></th>
+                <td>
+                    <textarea id="prompt_temporal_pivot" name="aicb_prompt_temporal_pivot" rows="3" class="large-text" required><?= esc_textarea( aicb_opt('prompt_temporal_pivot') ) ?></textarea>
+                    <p class="description">Instructions guiding how current system date details are presented. Supports <code>{current_date}</code> and <code>{current_time}</code> dynamic tokens.</p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="prompt_tool_instruction">Tool Coordination Prompt</label></th>
+                <td>
+                    <textarea id="prompt_tool_instruction" name="aicb_prompt_tool_instruction" rows="8" class="large-text" required><?= esc_textarea( aicb_opt('prompt_tool_instruction') ) ?></textarea>
+                    <p class="description">The explicit instructions coordinating when the model should invoke the calendar tool versus standard business FAQs.</p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="prompt_negative_constraints">Negative Constraints Prompt</label></th>
+                <td>
+                    <textarea id="prompt_negative_constraints" name="aicb_prompt_negative_constraints" rows="10" class="large-text" required><?= esc_textarea( aicb_opt('prompt_negative_constraints') ) ?></textarea>
+                    <p class="description">Explicit formatting boundaries, context safeguards, word exclusions, and response structural limits.</p>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Reset prompts directly inside settings form context safely -->
+        <div style="border-top:1px solid #eee;margin-top:20px;padding-top:20px">
+            <p class="description" style="margin-bottom:10px; color:#b91c1c;">⚠️ Warning: Resetting will instantly restore all prompt textareas above back to their original core templates.</p>
+            <button type="button" id="aicb-reset-prompts-btn" class="button button-secondary" style="color: #b91c1c; border-color: #f87171;">Reset Engineering Templates</button>
+        </div>
+    </div>
+
     <?php submit_button( 'Save Settings' ); ?>
+</form>
+
+<form id="aicb-reset-prompts-form" method="post" style="display:none;">
+    <?php wp_nonce_field( 'aicb_reset_prompts', 'aicb_reset_prompts_nonce' ); ?>
 </form>
 
 <form id="aicb-flush-cache-form" method="post" onsubmit="return confirm('Flush all cached summaries? They will be lazy-regenerated on-demand.')">
@@ -409,6 +453,7 @@
 </form>
 </div>
 
+<!-- Embed catalog JSON for JS -->
 <script>
 (function() {
     var catalog  = <?= wp_json_encode( aicb_get_catalog() ) ?>;
@@ -465,5 +510,28 @@
     modelSel.addEventListener('change', updateDesc);
     updateModels(<?= wp_json_encode( $cur_provider ) ?>);
     updateDesc();
+
+    // Toggle advanced prompt engineer panels dynamically
+    jQuery(document).ready(function($) {
+        $('#aicb-toggle-advanced-prompts').on('click', function(e) {
+            e.preventDefault();
+            var panel = $('#aicb-advanced-prompts-panel');
+            if (panel.is(':visible')) {
+                panel.slideUp(200);
+                $(this).text('🛠️ Show Advanced Prompt Engineering Options');
+            } else {
+                panel.slideDown(200);
+                $(this).text('🛠️ Hide Advanced Prompt Engineering Options');
+            }
+        });
+
+        // Intercept and submit native prompt resets back to standard original values
+        $('#aicb-reset-prompts-btn').on('click', function(e) {
+            e.preventDefault();
+            if (confirm('Are you sure you want to reset all prompt engineering templates to default? This cannot be undone.')) {
+                $('#aicb-reset-prompts-form').submit();
+            }
+        });
+    });
 })();
 </script>
