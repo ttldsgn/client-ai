@@ -38,6 +38,12 @@ function aicb_enqueue_frontend() {
         $chat_title = str_replace( 'Chat with us', 'Chat with me', $chat_title );
     }
 
+    $chatbot_language = '';
+    $language_mode = aicb_opt( 'chatbot_language_mode' );
+    if ( $language_mode === 'fixed' ) {
+        $chatbot_language = aicb_opt( 'chatbot_language' );
+    }
+
     wp_localize_script( 'aicb-script', 'aicbData', [
         'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
         'nonce'       => wp_create_nonce( 'aicb_chat' ),
@@ -49,6 +55,7 @@ function aicb_enqueue_frontend() {
         'placeholder' => aicb_opt( 'placeholder' ),
         'footerText'  => aicb_opt( 'footer_text' ),
         'pageId'      => get_queried_object_id() ?: 0,
+        'language'    => $chatbot_language,
     ] );
 }
 
@@ -185,7 +192,22 @@ function aicb_ajax_chat() {
     // Load dynamic negative constraints prompt
     $negative_constraints = "\n" . aicb_opt( 'prompt_negative_constraints' );
 
-    $system_prompt = aicb_opt( 'system_prompt' ) . "\n\n" . $identity_prompt . $perspective_prompt . $tone_prompt . $temporal_pivot . $tool_instruction . $negative_constraints . $custom_kb . $page_context;
+    // Language instruction
+    $language_instruction = '';
+    $language_mode = aicb_opt( 'chatbot_language_mode' );
+    if ( $language_mode === 'auto' && ! empty( $_POST['language'] ) ) {
+        $language = sanitize_text_field( wp_unslash( $_POST['language'] ) );
+        if ( ! empty( $language ) ) {
+            $language_instruction = "\n\n- LANGUAGE: You must respond in {$language}. All responses must be in the user's language. Never switch to another language.";
+        }
+    } elseif ( $language_mode === 'fixed' ) {
+        $language = aicb_opt( 'chatbot_language' );
+        if ( ! empty( $language ) ) {
+            $language_instruction = "\n\n- LANGUAGE: You must respond in {$language}. All responses must be in this language. Never switch to another language.";
+        }
+    }
+
+    $system_prompt = aicb_opt( 'system_prompt' ) . "\n\n" . $identity_prompt . $perspective_prompt . $tone_prompt . $temporal_pivot . $tool_instruction . $negative_constraints . $language_instruction . $custom_kb . $page_context;
     $provider = aicb_opt( 'provider' );
     $model    = aicb_opt( 'model' );
 

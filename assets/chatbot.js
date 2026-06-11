@@ -276,6 +276,7 @@
       question:         question,
       page_id:          cfg.pageId || 0,
       session_id:       sessionId,
+      language:         cfg.language || (navigator.language || 'en'),
       confirm_handover: awaitingHandover ? 'true' : 'false' // Forward confirmation loop state safely [1.6.0]
     });
     xhr.send(params);

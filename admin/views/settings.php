@@ -297,6 +297,60 @@
         </table>
     </div>
 
+    <!-- ── LANGUAGE & LOCALIZATION ── -->
+    <div class="aicb-section">
+        <h2>Language & Localization</h2>
+        <table class="form-table">
+            <tr>
+                <th><label for="aicb_chatbot_language_mode">Chatbot Language</label></th>
+                <td>
+                    <select id="aicb_chatbot_language_mode" name="aicb_chatbot_language_mode">
+                        <option value="auto" <?= selected( aicb_opt('chatbot_language_mode'), 'auto', false ) ?>>Auto-detect (visitor browser language)</option>
+                        <option value="fixed" <?= selected( aicb_opt('chatbot_language_mode'), 'fixed', false ) ?>>Fixed language (choose below)</option>
+                    </select>
+                    <p class="description">Auto-detect uses the visitor's browser language setting. Fixed forces all responses to a single language.</p>
+                </td>
+            </tr>
+            <tr id="aicb-fixed-language-row" style="<?= aicb_opt('chatbot_language_mode') === 'fixed' ? '' : 'display:none' ?>">
+                <th><label for="aicb_chatbot_language">Language</label></th>
+                <td>
+                    <select id="aicb_chatbot_language" name="aicb_chatbot_language">
+                        <option value="">— Select a language —</option>
+                        <option value="English" <?= selected( aicb_opt('chatbot_language'), 'English', false ) ?>>English</option>
+                        <option value="Español" <?= selected( aicb_opt('chatbot_language'), 'Español', false ) ?>>Español</option>
+                        <option value="Français" <?= selected( aicb_opt('chatbot_language'), 'Français', false ) ?>>Français</option>
+                        <option value="Deutsch" <?= selected( aicb_opt('chatbot_language'), 'Deutsch', false ) ?>>Deutsch</option>
+                        <option value="Português" <?= selected( aicb_opt('chatbot_language'), 'Português', false ) ?>>Português</option>
+                        <option value="Italiano" <?= selected( aicb_opt('chatbot_language'), 'Italiano', false ) ?>>Italiano</option>
+                        <option value="Nederlands" <?= selected( aicb_opt('chatbot_language'), 'Nederlands', false ) ?>>Nederlands</option>
+                        <option value="日本語" <?= selected( aicb_opt('chatbot_language'), '日本語', false ) ?>>日本語</option>
+                        <option value="中文 (简体)" <?= selected( aicb_opt('chatbot_language'), '中文 (简体)', false ) ?>>中文 (简体)</option>
+                        <option value="中文 (繁體)" <?= selected( aicb_opt('chatbot_language'), '中文 (繁體)', false ) ?>>中文 (繁體)</option>
+                        <option value="한국어" <?= selected( aicb_opt('chatbot_language'), '한국어', false ) ?>>한국어</option>
+                        <option value="Русский" <?= selected( aicb_opt('chatbot_language'), 'Русский', false ) ?>>Русский</option>
+                        <option value="العربية" <?= selected( aicb_opt('chatbot_language'), 'العربية', false ) ?>>العربية</option>
+                        <option value="हिन्दी" <?= selected( aicb_opt('chatbot_language'), 'हिन्दी', false ) ?>>हिन्दी</option>
+                        <option value="Bahasa Indonesia" <?= selected( aicb_opt('chatbot_language'), 'Bahasa Indonesia', false ) ?>>Bahasa Indonesia</option>
+                        <option value="Türkçe" <?= selected( aicb_opt('chatbot_language'), 'Türkçe', false ) ?>>Türkçe</option>
+                        <option value="Polski" <?= selected( aicb_opt('chatbot_language'), 'Polski', false ) ?>>Polski</option>
+                        <option value="Svenska" <?= selected( aicb_opt('chatbot_language'), 'Svenska', false ) ?>>Svenska</option>
+                        <option value="Dansk" <?= selected( aicb_opt('chatbot_language'), 'Dansk', false ) ?>>Dansk</option>
+                        <option value="Suomi" <?= selected( aicb_opt('chatbot_language'), 'Suomi', false ) ?>>Suomi</option>
+                        <option value="Norsk" <?= selected( aicb_opt('chatbot_language'), 'Norsk', false ) ?>>Norsk</option>
+                        <option value="Čeština" <?= selected( aicb_opt('chatbot_language'), 'Čeština', false ) ?>>Čeština</option>
+                        <option value="Română" <?= selected( aicb_opt('chatbot_language'), 'Română', false ) ?>>Română</option>
+                        <option value="Magyar" <?= selected( aicb_opt('chatbot_language'), 'Magyar', false ) ?>>Magyar</option>
+                        <option value="Ελληνικά" <?= selected( aicb_opt('chatbot_language'), 'Ελληνικά', false ) ?>>Ελληνικά</option>
+                        <option value="Tiếng Việt" <?= selected( aicb_opt('chatbot_language'), 'Tiếng Việt', false ) ?>>Tiếng Việt</option>
+                        <option value="ไทย" <?= selected( aicb_opt('chatbot_language'), 'ไทย', false ) ?>>ไทย</option>
+                        <option value="עברית" <?= selected( aicb_opt('chatbot_language'), 'עברית', false ) ?>>עברית</option>
+                    </select>
+                    <p class="description">Use a language name the AI can understand. Language is sent to the model as an instruction in the system prompt.</p>
+                </td>
+            </tr>
+        </table>
+    </div>
+
     <!-- ── BEHAVIOUR ── -->
     <div class="aicb-section">
         <h2>Behaviour</h2>
@@ -530,6 +584,15 @@
             e.preventDefault();
             if (confirm('Are you sure you want to reset all prompt engineering templates to default? This cannot be undone.')) {
                 $('#aicb-reset-prompts-form').submit();
+            }
+        });
+
+        // Toggle fixed language row on mode switch
+        $('#aicb_chatbot_language_mode').on('change', function() {
+            if ($(this).val() === 'fixed') {
+                $('#aicb-fixed-language-row').show();
+            } else {
+                $('#aicb-fixed-language-row').hide();
             }
         });
     });
