@@ -50,6 +50,7 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 You can output the chatbot toggle on your site in two ways:
 * **Automatic Injection**: Check the **Auto-inject** box in **Display Options** to display the floating widget on all allowed public pages automatically.
 * **Shortcode**: Uncheck Auto-inject and drop this shortcode into any page, text block, header, or footer element:
+  
   ```text
   [ai_chatbot]
 
@@ -63,14 +64,14 @@ By expanding the 'Advanced Prompt Engineering' panel on the settings page, devel
 * **Tool Coordination Protocol**: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
 * **Negative Constraints & Integrity**: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
 
-If a developer's customizations cause unwanted behavior or system drift, clicking the 'Reset Engineering Templates' button will securely purge custom overrides and restore the factory prompt schemas.
+If a developer's customizations cause unwanted behavior or system drift, clicking the `Reset Engineering Templates` button will securely purge custom overrides and restore the factory prompt schemas.
 
 ## Open Source & Community License
 
-This plugin is fully 'open source' and released under the 'GPL-2.0+ license'.
+This plugin is fully `open source` and released under the `GPL-2.0+ license`.
 
 Members of the WordPress community are welcome to clone, fork, modify, and redistribute this codebase, provided that any modified distributions are also kept free, open source, and accessible to the public.
 
 If this modular AI chatbot integration saved you development hours, improved your customer experience, or made your site more accessible, please consider buying me a coffee to support my ongoing work and contributions to the open-source community!
 
-[![Buy Me A Coffee](https://img.shields.shields.shields.shields.shields.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
