@@ -6,7 +6,7 @@ A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supp
 [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](#)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](#)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](#)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/yourusername)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
 
 ---
 
@@ -26,7 +26,7 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 * **Advanced Prompt Engineering**: A toggleable developer panel inside your settings page lets you inspect, edit, and experiment with the sub-prompts coordinating the AI’s temporal pivots, tool-calling protocols, and negative constraints. Complete with a secure "Reset to Defaults" option.
 * **Strategy A Context Retrieval**: Intelligently compiles clean text digests of your allowed post types on save, caching condensed summaries to significantly reduce API token usage and latency.
 * **Custom Q&A Overrides**: Prioritized semantic matching table to bypass expensive LLM inference entirely for exact business FAQs and keywords.
-* **Accessible Slide-Out Interface (WCAG 2.2 AA)**: Fully responsive and transition-smooth sliding panel widgets for `tab-right` and `tab-left` placements. Includes top-aligned, upright emoji icons, focus-visible outline states, and native HTML5 `hidden` toggle alignments.
+* **Accessible Slide-Out Interface (WCAG 2.2 AA)**: Fully responsive and transition-smooth sliding panel widgets for `tab-right` and `tab-left` placements.
 * **Enterprise Cryptography & Security**: Secure AES-256-GCM database encryption for API keys, strict Server-Side Request Forgery (SSRF) endpoint filters, WP nonce verification, and CDN-aware proxy IP rate limiting.
 * **Audit Logs & Cleanup**: Paginated, filterable conversation logging with automated background cron cleanup tasks to manage database storage.
 
@@ -50,16 +50,28 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 You can output the chatbot toggle on your site in two ways:
 * **Automatic Injection**: Check the **Auto-inject** box in **Display Options** to display the floating widget on all allowed public pages automatically.
 * **Shortcode**: Uncheck Auto-inject and drop this shortcode into any page, text block, header, or footer element:
+  
   ```text
   [ai_chatbot]
-Developer Guide
-Advanced Prompt Engineering (Exposed Sub-Prompts)
-By expanding the Advanced Prompt Engineering panel on the settings page, developers can modify the core instructions guiding the model's behavior:
-Temporal Context Template: Instructs the model on how to handle the current system time and date. Supports {current_date} and {current_time} dynamic tag replacements.
-Tool Coordination Protocol: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
-Negative Constraints & Integrity: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
-If a developer's customizations cause unwanted behavior or system drift, clicking the Reset Engineering Templates button will securely purge custom overrides and restore the factory prompt schemas.
-Open Source & Community License
-This plugin is fully open source and released under the GPL-2.0+ license.
+
+## Developer Guide
+
+### Advanced Prompt Engineering (Exposed Sub-Prompts)
+
+By expanding the 'Advanced Prompt Engineering' panel on the settings page, developers can modify the core instructions guiding the model's behavior:
+
+* **Temporal Context Template**: Instructs the model on how to handle the current system time and date. Supports {current_date} and {current_time} dynamic tag replacements.
+* **Tool Coordination Protocol**: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
+* **Negative Constraints & Integrity**: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
+
+If a developer's customizations cause unwanted behavior or system drift, clicking the `Reset Engineering Templates` button will securely purge custom overrides and restore the factory prompt schemas.
+
+## Open Source & Community License
+
+This plugin is fully `open source` and released under the `GPL-2.0+ license`.
+
 Members of the WordPress community are welcome to clone, fork, modify, and redistribute this codebase, provided that any modified distributions are also kept free, open source, and accessible to the public.
+
 If this modular AI chatbot integration saved you development hours, improved your customer experience, or made your site more accessible, please consider buying me a coffee to support my ongoing work and contributions to the open-source community!
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
