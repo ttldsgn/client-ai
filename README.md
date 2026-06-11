@@ -53,6 +53,7 @@ You can output the chatbot toggle on your site in two ways:
   
   ```text
   [ai_chatbot]
+  ```
 
 ## Developer Guide
 
