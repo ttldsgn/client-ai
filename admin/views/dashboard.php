@@ -88,4 +88,29 @@
             <p>No conversations yet.</p>
         <?php endif; ?>
     </div>
+
+    <!-- Most Asked Questions -->
+    <div class="aicb-section" style="margin-top:20px;">
+        <h2>Most Asked Questions</h2>
+        <?php if ( ! empty( $top_questions ) ) : ?>
+            <table class="aicb-logs">
+                <thead><tr><th style="width:40px">#</th><th>Question</th><th style="width:90px">Times Asked</th><th style="width:120px">Last Asked</th><th style="width:100px">Action</th></tr></thead>
+                <tbody>
+                    <?php $rank = 1; ?>
+                    <?php foreach ( $top_questions as $row ) : ?>
+                        <tr>
+                            <td><?= $rank++ ?></td>
+                            <td><?= esc_html( mb_strimwidth( $row['sample'], 0, 100, '…' ) ) ?></td>
+                            <td><span style="display:inline-block;background:#2563eb;color:#fff;border-radius:99px;padding:1px 10px;font-weight:700;font-size:12px;"><?= (int) $row['count'] ?></span></td>
+                            <td><?= esc_html( human_time_diff( strtotime( $row['last'] ), time() ) ) ?> ago</td>
+                            <td><a href="?page=ai-chatbot-qa" class="button button-small" title="Add as Custom Q&A">➕ Q&A</a></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+            <p style="margin-top:15px;color:#64748b;font-size:12px;">Questions are grouped by normalizing lowercase text and stripping punctuation. Repeated questions are a good signal to add a Custom Q&A entry.</p>
+        <?php else : ?>
+            <p>Not enough data yet. Questions will appear here as users interact with the chatbot.</p>
+        <?php endif; ?>
+    </div>
 </div>

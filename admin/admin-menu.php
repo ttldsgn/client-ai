@@ -288,6 +288,32 @@ function aicb_page_dashboard() {
     $handover_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $lt WHERE model LIKE '%handover%'" );
     $cached_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->postmeta WHERE meta_key = '_aicb_page_digest'" );
 
+    // Most Asked Questions (PHP normalization for MySQL 5.7 compat)
+    $all_questions = $wpdb->get_results(
+        "SELECT question, created_at FROM $lt ORDER BY id DESC LIMIT 500"
+    );
+    $top_questions = [];
+    if ( ! empty( $all_questions ) ) {
+        $groups = [];
+        foreach ( $all_questions as $row ) {
+            $normalized = preg_replace( '/[^a-z0-9\s]/', '', strtolower( trim( $row->question ) ) );
+            if ( '' === $normalized ) continue;
+            if ( ! isset( $groups[ $normalized ] ) ) {
+                $groups[ $normalized ] = [
+                    'sample'  => $row->question,
+                    'count'   => 0,
+                    'last'    => $row->created_at,
+                ];
+            }
+            $groups[ $normalized ]['count']++;
+            if ( $row->created_at > $groups[ $normalized ]['last'] ) {
+                $groups[ $normalized ]['last'] = $row->created_at;
+            }
+        }
+        usort( $groups, function( $a, $b ) { return $b['count'] - $a['count']; } );
+        $top_questions = array_slice( $groups, 0, 10 );
+    }
+
     include AICB_DIR . 'admin/views/dashboard.php';
 }
 
