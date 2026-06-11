@@ -143,6 +143,11 @@ function aicb_register_settings() {
 }
 
 function aicb_sanitize_specific_option( $val, $field ) {
+    // Guard: preserve existing data when the option wasn't submitted in a form
+    if ( $val === null || $val === '' ) {
+        return get_option( 'aicb_' . $field, aicb_default_options()[ $field ] ?? '' );
+    }
+
     if ( $field === 'calendar_data' ) {
         if ( ! is_array( $val ) ) {
             return aicb_default_options()['calendar_data'];
