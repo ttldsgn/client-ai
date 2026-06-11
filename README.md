@@ -64,11 +64,11 @@ By expanding the 'Advanced Prompt Engineering' panel on the settings page, devel
 * **Tool Coordination Protocol**: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
 * **Negative Constraints & Integrity**: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
 
-If a developer's customizations cause unwanted behavior or system drift, clicking the `Reset Engineering Templates` button will securely purge custom overrides and restore the factory prompt schemas.
+If a developer's customizations cause unwanted behavior or system drift, clicking the **Reset Engineering Templates** button will securely purge custom overrides and restore the factory prompt schemas.
 
 ## Open Source & Community License
 
-This plugin is fully `open source` and released under the `GPL-2.0+ license`.
+This plugin is fully **open source** and released under the **GPL-2.0+ license**.
 
 Members of the WordPress community are welcome to clone, fork, modify, and redistribute this codebase, provided that any modified distributions are also kept free, open source, and accessible to the public.
 
