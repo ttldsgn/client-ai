@@ -26,7 +26,7 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 * **Advanced Prompt Engineering**: A toggleable developer panel inside your settings page lets you inspect, edit, and experiment with the sub-prompts coordinating the AI’s temporal pivots, tool-calling protocols, and negative constraints. Complete with a secure "Reset to Defaults" option.
 * **Strategy A Context Retrieval**: Intelligently compiles clean text digests of your allowed post types on save, caching condensed summaries to significantly reduce API token usage and latency.
 * **Custom Q&A Overrides**: Prioritized semantic matching table to bypass expensive LLM inference entirely for exact business FAQs and keywords.
-* **Accessible Slide-Out Interface (WCAG 2.2 AA)**: Fully responsive and transition-smooth sliding panel widgets for `tab-right` and `tab-left` placements. Includes top-aligned, upright emoji icons, focus-visible outline states, and native HTML5 `hidden` toggle alignments.
+* **Accessible Slide-Out Interface (WCAG 2.2 AA)**: Fully responsive and transition-smooth sliding panel widgets for `tab-right` and `tab-left` placements.
 * **Enterprise Cryptography & Security**: Secure AES-256-GCM database encryption for API keys, strict Server-Side Request Forgery (SSRF) endpoint filters, WP nonce verification, and CDN-aware proxy IP rate limiting.
 * **Audit Logs & Cleanup**: Paginated, filterable conversation logging with automated background cron cleanup tasks to manage database storage.
 
@@ -59,14 +59,15 @@ You can output the chatbot toggle on your site in two ways:
 
 By expanding the 'Advanced Prompt Engineering' panel on the settings page, developers can modify the core instructions guiding the model's behavior:
 
-* **Temporal Context Template: Instructs the model on how to handle the current system time and date. Supports {current_date} and {current_time} dynamic tag replacements.
-* **Tool Coordination Protocol: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
-* **Negative Constraints & Integrity: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
+* **Temporal Context Template**: Instructs the model on how to handle the current system time and date. Supports {current_date} and {current_time} dynamic tag replacements.
+* **Tool Coordination Protocol**: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
+* **Negative Constraints & Integrity**: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
 
 If a developer's customizations cause unwanted behavior or system drift, clicking the 'Reset Engineering Templates' button will securely purge custom overrides and restore the factory prompt schemas.
-Open Source & Community License
 
-## This plugin is fully open source and released under the GPL-2.0+ license.
+## Open Source & Community License
+
+This plugin is fully 'open source' and released under the 'GPL-2.0+ license'.
 
 Members of the WordPress community are welcome to clone, fork, modify, and redistribute this codebase, provided that any modified distributions are also kept free, open source, and accessible to the public.
 
