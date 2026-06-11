@@ -52,9 +52,13 @@ You can output the chatbot toggle on your site in two ways:
 * **Shortcode**: Uncheck Auto-inject and drop this shortcode into any page, text block, header, or footer element:
   ```text
   [ai_chatbot]
-Developer Guide
-Advanced Prompt Engineering (Exposed Sub-Prompts)
-By expanding the Advanced Prompt Engineering panel on the settings page, developers can modify the core instructions guiding the model's behavior:
+
+## Developer Guide
+
+### Advanced Prompt Engineering (Exposed Sub-Prompts)
+
+By expanding the ##Advanced Prompt Engineering## panel on the settings page, developers can modify the core instructions guiding the model's behavior:
+
 Temporal Context Template: Instructs the model on how to handle the current system time and date. Supports {current_date} and {current_time} dynamic tag replacements.
 Tool Coordination Protocol: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
 Negative Constraints & Integrity: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
