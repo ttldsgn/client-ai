@@ -3,7 +3,7 @@
  * Plugin Name:  ClientAI
  * Plugin URI:   https://totaldsgn.com
  * Description:  Floating AI chatbot supporting Anthropic, Groq, Google AI Studio, Cerebras, Mistral, and custom endpoints.
- * Version:      2.3.1
+ * Version:      2.3.2
  * Author:       ttldsgn
  * License:      GPL-2.0+
  * Text Domain:  ai-chatbot
@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AICB_VERSION',   '2.3.1' );
+define( 'AICB_VERSION',   '2.3.2' );
 define( 'AICB_FILE',      __FILE__ );
 define( 'AICB_DIR',       plugin_dir_path( __FILE__ ) );
 define( 'AICB_URL',       plugin_dir_url( __FILE__ ) );

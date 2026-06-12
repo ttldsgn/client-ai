@@ -356,6 +356,16 @@
         <h2>Behaviour</h2>
         <table class="form-table">
             <tr>
+                <th>Enable Feedback</th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="aicb_enable_feedback" value="1" <?= checked( aicb_opt('enable_feedback'), 1 ) ?> />
+                        Show thumbs up/down after each response to collect visitor feedback
+                    </label>
+                    <p class="description">Adds a feedback column to the logs table. Dashboard shows satisfaction rate when enabled.</p>
+                </td>
+            </tr>
+            <tr>
                 <th><label for="aicb_max_tokens">Max Response Tokens</label></th>
                 <td>
                     <input type="number" id="aicb_max_tokens" name="aicb_max_tokens"

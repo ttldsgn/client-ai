@@ -44,18 +44,22 @@ function aicb_enqueue_frontend() {
         $chatbot_language = aicb_opt( 'chatbot_language' );
     }
 
+    $enable_feedback = aicb_opt( 'enable_feedback' );
+
     wp_localize_script( 'aicb-script', 'aicbData', [
-        'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
-        'nonce'       => wp_create_nonce( 'aicb_chat' ),
-        'position'    => aicb_opt( 'position' ),
-        'color'       => $primary_color,
-        'icon'        => aicb_opt( 'icon' ),
-        'title'       => $chat_title,
-        'welcome'     => aicb_opt( 'welcome_msg' ),
-        'placeholder' => aicb_opt( 'placeholder' ),
-        'footerText'  => aicb_opt( 'footer_text' ),
-        'pageId'      => get_queried_object_id() ?: 0,
-        'language'    => $chatbot_language,
+        'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+        'nonce'          => wp_create_nonce( 'aicb_chat' ),
+        'position'       => aicb_opt( 'position' ),
+        'color'          => $primary_color,
+        'icon'           => aicb_opt( 'icon' ),
+        'title'          => $chat_title,
+        'welcome'        => aicb_opt( 'welcome_msg' ),
+        'placeholder'    => aicb_opt( 'placeholder' ),
+        'footerText'     => aicb_opt( 'footer_text' ),
+        'pageId'         => get_queried_object_id() ?: 0,
+        'language'       => $chatbot_language,
+        'enableFeedback' => $enable_feedback ? true : false,
+        'feedbackNonce'  => $enable_feedback ? wp_create_nonce( 'aicb_feedback' ) : '',
     ] );
 }
 
@@ -238,8 +242,8 @@ function aicb_ajax_chat() {
         }
     }
 
-    aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provider, $model );
-    wp_send_json_success( [ 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider ] );
+    $log_id = aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provider, $model );
+    wp_send_json_success( [ 'log_id' => $log_id, 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider ] );
 }
 
 function aicb_set_security_headers() {
@@ -305,4 +309,43 @@ function aicb_get_handover_url() {
         case 'sms'      : return 'sms:' . preg_replace( '/[^0-9+]/', '', $target );
         default         : return esc_url_raw( $target );
     }
+}
+
+/* =========================================================
+   5. FEEDBACK AJAX ENDPOINT
+   ========================================================= */
+
+add_action( 'wp_ajax_aicb_feedback',        'aicb_ajax_feedback' );
+add_action( 'wp_ajax_nopriv_aicb_feedback', 'aicb_ajax_feedback' );
+function aicb_ajax_feedback() {
+    aicb_set_security_headers();
+    check_ajax_referer( 'aicb_feedback', 'nonce' );
+
+    if ( ! aicb_opt( 'enable_feedback' ) ) {
+        wp_send_json_error( [ 'message' => 'Feedback is disabled.' ], 403 );
+    }
+
+    $log_id = isset( $_POST['log_id'] ) ? (int) $_POST['log_id'] : 0;
+    $rating = isset( $_POST['rating'] ) ? (int) $_POST['rating'] : -1;
+
+    if ( ! $log_id || ! in_array( $rating, [ 0, 1 ], true ) ) {
+        wp_send_json_error( [ 'message' => 'Invalid parameters.' ], 400 );
+    }
+
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LOG_TABLE;
+
+    $updated = $wpdb->update(
+        $table,
+        [ 'feedback' => $rating ],
+        [ 'id' => $log_id ],
+        [ '%d' ],
+        [ '%d' ]
+    );
+
+    if ( false === $updated ) {
+        wp_send_json_error( [ 'message' => 'Database error.' ], 500 );
+    }
+
+    wp_send_json_success( [ 'message' => 'Feedback recorded.' ] );
 }

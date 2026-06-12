@@ -560,3 +560,38 @@
 #aicb-root.tab-left:has(#aicb-window:not([hidden])) #aicb-tab {
     left: 370px !important;
 }
+
+/* ── Feedback Thumbs ──────────────────────────────────── */
+#aicb-root .aicb-feedback {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px 8px;
+    font-size: 12px;
+    color: #64748b;
+}
+#aicb-root .aicb-feedback-label {
+    font-size: 11px;
+    margin-right: 2px;
+}
+#aicb-root .aicb-feedback-btn {
+    background: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 6px;
+    transition: background 0.15s, opacity 0.15s;
+}
+#aicb-root .aicb-feedback-btn:hover,
+#aicb-root .aicb-feedback-btn:focus {
+    background: #f1f5f9;
+}
+#aicb-root .aicb-feedback-btn:disabled {
+    cursor: default;
+    opacity: 0.5;
+}
+#aicb-root .aicb-feedback-btn:disabled:hover {
+    background: none;
+}

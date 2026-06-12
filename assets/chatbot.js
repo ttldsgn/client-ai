@@ -241,6 +241,11 @@
           if (data.success && data.data && data.data.answer) {
             addMsg(data.data.answer, 'bot');
 
+            // Show thumbs up/down feedback if enabled
+            if (cfg.enableFeedback && data.data.log_id) {
+              addFeedback(data.data.log_id);
+            }
+
             // Set state based on server confirmation request [1.6.0]
             if (data.data.awaiting_confirmation) {
               awaitingHandover = true;
@@ -333,6 +338,65 @@
       msgs.appendChild(container);
       scrollToBottom();
     }
+  }
+
+  /**
+   * Render thumbs up/down feedback buttons after a bot response.
+   */
+  function addFeedback(sid) {
+    var msgs = document.getElementById('aicb-messages');
+    if (!msgs) return;
+
+    var container = el('div', {
+      'class': 'aicb-feedback',
+      'role': 'group',
+      'aria-label': 'Was this helpful?'
+    });
+
+    var label = el('span', { 'class': 'aicb-feedback-label' }, 'Was this helpful? ');
+
+    var upBtn = el('button', {
+      'class': 'aicb-feedback-btn',
+      'data-rating': '1',
+      'aria-label': 'Yes, helpful',
+      'type': 'button'
+    }, '👍');
+
+    var downBtn = el('button', {
+      'class': 'aicb-feedback-btn',
+      'data-rating': '0',
+      'aria-label': 'No, not helpful',
+      'type': 'button'
+    }, '👎');
+
+    container.appendChild(label);
+    container.appendChild(upBtn);
+    container.appendChild(downBtn);
+    msgs.appendChild(container);
+    scrollToBottom();
+
+    function submitFeedback(rating) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', cfg.ajaxUrl, true);
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          upBtn.disabled = true;
+          downBtn.disabled = true;
+          upBtn.style.opacity = '0.5';
+          downBtn.style.opacity = '0.5';
+        }
+      };
+      xhr.send(encodeParams({
+        action:     'aicb_feedback',
+        nonce:      cfg.feedbackNonce,
+        log_id:     sid,
+        rating:     rating
+      }));
+    }
+
+    upBtn.addEventListener('click', function () { submitFeedback(1); });
+    downBtn.addEventListener('click', function () { submitFeedback(0); });
   }
 
   function scrollToBottom() {

@@ -9,7 +9,7 @@
     <p>Total: <?= $total ?> conversations</p>
     <?php if ($rows) : ?>
         <table class="aicb-logs">
-            <thead><tr><th>Time</th><th>Question</th><th>Answer</th><th>Provider</th><th>Model</th><th>Page</th></tr></thead>
+            <thead><tr><th>Time</th><th>Question</th><th>Answer</th><th>Provider</th><th>Model</th><th>Page</th><th>Feedback</th></tr></thead>
             <tbody>
                 <?php foreach ($rows as $row) : ?>
                     <tr>
@@ -19,6 +19,15 @@
                         <td><span class="aicb-tag aicb-tag-provider"><?= esc_html($row->provider ?: '—') ?></span></td>
                         <td style="font-size:11px;color:#666"><?= esc_html( mb_strimwidth($row->model,0,30,'…') ) ?></td>
                         <td><?php echo $row->page_id ? esc_html( get_the_title($row->page_id) ?: '#'.$row->page_id ) : '' ?></td>
+                        <td style="text-align:center;font-size:16px"><?php
+                            if ( $row->feedback === '1' ) {
+                                echo '👍';
+                            } elseif ( $row->feedback === '0' ) {
+                                echo '👎';
+                            } else {
+                                echo '<span style="color:#cbd5e1;">—</span>';
+                            }
+                        ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

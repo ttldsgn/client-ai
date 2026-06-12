@@ -19,6 +19,7 @@ function aicb_activate() {
         ip_hash     VARCHAR(64)     NOT NULL DEFAULT '',
         provider    VARCHAR(32)     NOT NULL DEFAULT '',
         model       VARCHAR(128)    NOT NULL DEFAULT '',
+        feedback    TINYINT(1)      DEFAULT NULL,
         created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         KEY created_at (created_at)
@@ -59,6 +60,20 @@ function aicb_deactivate() {
 }
 
 /**
+ * One-time database migration: add feedback column if missing.
+ * Runs on admin_init and activation for existing installations.
+ */
+function aicb_maybe_add_feedback_column() {
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LOG_TABLE;
+    $row = $wpdb->get_results( "SHOW COLUMNS FROM {$table} LIKE 'feedback'" );
+    if ( empty( $row ) ) {
+        $wpdb->query( "ALTER TABLE {$table} ADD COLUMN feedback TINYINT(1) DEFAULT NULL AFTER model" );
+    }
+}
+add_action( 'admin_init', 'aicb_maybe_add_feedback_column' );
+
+/**
  * Create or append logs to custom database tables.
  */
 function aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provider = '', $model = '' ) {
@@ -78,6 +93,7 @@ function aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provide
         ],
         [ '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s' ]
     );
+    return $wpdb->insert_id;
 }
 
 /**

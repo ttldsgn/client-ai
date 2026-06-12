@@ -64,6 +64,8 @@ function aicb_default_options() {
         // Language & Localization
         'chatbot_language_mode'   => 'auto',
         'chatbot_language'        => '',
+        // Feedback
+        'enable_feedback'         => 0,
     ];
 }
 

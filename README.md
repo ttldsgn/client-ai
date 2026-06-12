@@ -2,7 +2,7 @@
 
 A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supports native function calling, dynamic multi-provider LLM adapters, a searchable global holiday seeder, and advanced prompt engineering controls.
 
-[![Version](https://img.shields.io/badge/version-2.3.1-blue.svg)](#)
+[![Version](https://img.shields.io/badge/version-2.3.2-blue.svg)](#)
 [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](#)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](#)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](#)
@@ -22,6 +22,7 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 
 * **Multi-Provider AI Adapters**: Integrated connection adapters for Anthropic (Claude), Google AI Studio (Gemini), Groq (Llama), Cerebras, Mistral, and custom self-hosted OpenAI-compatible endpoints (Ollama, LM Studio, etc.).
 * **Multi-Language Support**: Auto-detect visitor browser language or set a fixed language. The AI responds natively in the specified language, making the chatbot accessible to international audiences without configuration changes.
+* **Visitor Feedback**: Optional thumbs up/down after each response. Satisfaction rate is displayed in the Dashboard, helping identify which answers need improvement.
 * **Deterministic Calendar Tool**: Empower the AI to answer business opening-hours questions using the `check_calendar` function. It supports dynamic weekday/weekend defaults, specific date overrides, and annual recurring dates.
 * **Global Holiday Seeder**: Connects to the Nager.Date API with a searchable autocomplete country selector. This allows you to automatically pull and seed holidays from any supported country directly into your schedules database.
 * **Advanced Prompt Engineering**: A toggleable developer panel inside your settings page lets you inspect, edit, and experiment with the sub-prompts coordinating the AI’s temporal pivots, tool-calling protocols, and negative constraints. Complete with a secure "Reset to Defaults" option.

@@ -59,8 +59,18 @@
                 <li style="padding:10px 0; border-bottom:1px solid #eee;">
                     💾 <strong>Cached Summaries:</strong> <span style="float:right; font-weight:bold; color:#16a34a;"><?= $cached_count ?></span>
                 </li>
-                <li style="padding:10px 0;">
+                <li style="padding:10px 0; border-bottom:1px solid #eee;">
                     📂 <strong>Logs Retention:</strong> <span style="float:right; font-weight:bold; color:#475569;"><?= esc_html( aicb_opt( 'log_retention_days' ) ?: 'Infinite' ) ?> Days</span>
+                </li>
+                <li style="padding:10px 0;">
+                    😊 <strong>Satisfaction Rate:</strong> 
+                    <span style="float:right; font-weight:bold; <?= $satisfaction_rate >= 80 ? 'color:#16a34a' : ( $satisfaction_rate >= 50 ? 'color:#ca8a04' : 'color:#dc2626' ) ?>">
+                        <?php if ( $total_feedback > 0 ) : ?>
+                            <?= $satisfaction_rate ?>% (<?= $positive_feedback ?>/<?= $total_feedback ?>)
+                        <?php else : ?>
+                            <span style="color:#94a3b8;">—</span>
+                        <?php endif; ?>
+                    </span>
                 </li>
             </ul>
         </div>

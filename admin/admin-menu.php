@@ -288,6 +288,11 @@ function aicb_page_dashboard() {
     $handover_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $lt WHERE model LIKE '%handover%'" );
     $cached_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $wpdb->postmeta WHERE meta_key = '_aicb_page_digest'" );
 
+    // Satisfaction Rate
+    $total_feedback    = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $lt WHERE feedback IS NOT NULL" );
+    $positive_feedback = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $lt WHERE feedback = 1" );
+    $satisfaction_rate = $total_feedback > 0 ? round( ( $positive_feedback / $total_feedback ) * 100 ) : 0;
+
     // Most Asked Questions (PHP normalization for MySQL 5.7 compat)
     $all_questions = $wpdb->get_results(
         "SELECT question, created_at FROM $lt ORDER BY id DESC LIMIT 500"
@@ -508,7 +513,7 @@ function aicb_page_logs() {
     $page = max( 1, (int)($_GET['paged'] ?? 1) );
     $off  = ($page-1)*$per;
     $total= (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}" . AICB_LOG_TABLE );
-    $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}" . AICB_LOG_TABLE . " ORDER BY id DESC LIMIT %d OFFSET %d", $per, $off ) );
+    $rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, session_id, question, answer, provider, model, page_id, feedback, created_at FROM {$wpdb->prefix}" . AICB_LOG_TABLE . " ORDER BY id DESC LIMIT %d OFFSET %d", $per, $off ) );
     $pages= ceil($total/$per);
 
     include AICB_DIR . 'admin/views/logs.php';
