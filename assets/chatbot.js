@@ -28,6 +28,9 @@
   var isOpen           = false;
   var isBusy           = false;
   var awaitingHandover = false; // Conversational escalation confirmation state [1.6.0]
+  var cooldownTimer    = null;  // Cooldown after error to prevent rapid re-sends
+  var isCooldown       = false; // Whether cooldown is active
+  var cooldownDuration = 5000;  // Cooldown duration in milliseconds (5 seconds)
 
   /* ── Build DOM ───────────────────────────────────────── */
   function init() {
@@ -198,9 +201,41 @@
     isOpen ? close() : open();
   }
 
+  /* ── Cooldown management ─────────────────────────────── */
+  function startCooldown() {
+    if (isCooldown) return;
+    isCooldown = true;
+    var inp = document.getElementById('aicb-input');
+    var sendBtn = document.getElementById('aicb-send');
+    if (inp) inp.setAttribute('disabled', 'true');
+    if (sendBtn) sendBtn.setAttribute('disabled', 'true');
+    cooldownTimer = setTimeout(function () {
+      isCooldown = false;
+      cooldownTimer = null;
+      if (!isBusy) {
+        var inp2 = document.getElementById('aicb-input');
+        var sendBtn2 = document.getElementById('aicb-send');
+        if (inp2) inp2.removeAttribute('disabled');
+        if (sendBtn2) sendBtn2.removeAttribute('disabled');
+      }
+    }, cooldownDuration);
+  }
+
+  function cancelCooldown() {
+    if (cooldownTimer) {
+      clearTimeout(cooldownTimer);
+      cooldownTimer = null;
+    }
+    isCooldown = false;
+  }
+
   /* ── Send message ─────────────────────────────────────── */
   function sendMessage() {
     if (isBusy) return;
+    if (isCooldown) {
+      addMsg('Please wait a moment before sending another message.', 'error');
+      return;
+    }
     var inp = document.getElementById('aicb-input');
     var question = inp.value.trim();
     if (!question) return;
@@ -270,9 +305,47 @@
       } else if (xhr.status === 429) {
         addMsg('You\'ve sent too many messages. Please wait a moment.', 'error');
         awaitingHandover = false;
-      } else {
-        addMsg('Connection error. Please try again.', 'error');
+        startCooldown();
+      } else if (xhr.status === 502 || xhr.status === 503) {
+        // AI provider temporarily unavailable
+        var errMsg = 'The AI service is temporarily unavailable. Please try again in a moment.';
+        // If server sent an error message, try to use it
+        try {
+          var errData = JSON.parse(xhr.responseText);
+          if (errData.data && errData.data.message) {
+            errMsg = errData.data.message;
+          }
+        } catch (e) {}
+        addMsg(errMsg, 'error');
         awaitingHandover = false;
+        startCooldown();
+      } else if (xhr.status === 500) {
+        addMsg('The AI assistant is not fully configured. Please contact support.', 'error');
+        awaitingHandover = false;
+      } else if (xhr.status === 400 || xhr.status === 403) {
+        try {
+          var errData2 = JSON.parse(xhr.responseText);
+          var msg2 = (errData2.data && errData2.data.message) ? errData2.data.message : 'Something went wrong. Please try again.';
+          addMsg(msg2, 'error');
+        } catch (e) {
+          addMsg('Something went wrong. Please try again.', 'error');
+        }
+        awaitingHandover = false;
+      } else if (xhr.status === 0 || xhr.status === 408) {
+        // Network error or timeout
+        addMsg('Connection lost. Please check your internet and try again.', 'error');
+        awaitingHandover = false;
+      } else {
+        // Generic error - try to use server message if available
+        try {
+          var errData3 = JSON.parse(xhr.responseText);
+          var msg3 = (errData3.data && errData3.data.message) ? errData3.data.message : 'Connection error. Please try again.';
+          addMsg(msg3, 'error');
+        } catch (e) {
+          addMsg('Connection error. Please try again.', 'error');
+        }
+        awaitingHandover = false;
+        startCooldown();
       }
     };
 
