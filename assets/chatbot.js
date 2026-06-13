@@ -263,6 +263,7 @@
             awaitingHandover = false;
           }
         } catch (e) {
+          console.error('Chatbot parse error:', e);
           addMsg('Unexpected response. Please try again.', 'error');
           awaitingHandover = false;
         }
