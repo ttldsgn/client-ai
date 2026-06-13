@@ -78,4 +78,6 @@ Members of the WordPress community are welcome to clone, fork, modify, and redis
 
 If this Client AI integration saved you development hours, improved your customer experience, or made your site more accessible, please consider buying me a coffee to support my ongoing work and contributions to the open-source community!
 
+<!-- Testing the CodeRabbit automated review pipeline -->
+
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
