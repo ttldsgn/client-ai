@@ -1,0 +1,14 @@
+version = 1
+
+[[analyzers]]
+name = "php"
+enabled = true
+
+  [analyzers.meta]
+  # This tells the PHP analyzer to ignore specific error codes repository-wide
+  # PHP-E1000 is the code for "Undefined function call" shown in your image_c5841a.jpg
+  ignore_rules = ["PHP-E1000"]
+
+[[analyzers]]
+name = "javascript"
+enabled = true
