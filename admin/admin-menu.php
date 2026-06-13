@@ -76,6 +76,18 @@ function aicb_admin_styles() {
             background: #e2e8f0;
             color: #0f172a;
         }
+
+        /* Conversation transcript styles */
+        .aicb-transcript{max-width:700px;margin:0 auto}
+        .aicb-transcript-msg{display:flex;flex-direction:column;margin-bottom:16px}
+        .aicb-transcript-msg .msg-meta{font-size:11px;color:#94a3b8;margin-bottom:2px}
+        .aicb-transcript-msg .msg-bubble{max-width:80%;padding:8px 14px;border-radius:10px;font-size:13px;line-height:1.5;word-break:break-word}
+        .aicb-transcript-msg.user{align-items:flex-end}
+        .aicb-transcript-msg.user .msg-bubble{background:#2563eb;color:#fff;border-bottom-right-radius:3px}
+        .aicb-transcript-msg.bot{align-items:flex-start}
+        .aicb-transcript-msg.bot .msg-bubble{background:#f1f5f9;color:#1e293b;border-bottom-left-radius:3px}
+        .aicb-transcript-msg .msg-feedback{font-size:14px;margin-top:2px;color:#64748b}
+        .aicb-conv-preview{color:#64748b;font-size:12px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
     </style>
     <?php
 }
@@ -506,15 +518,65 @@ function aicb_page_qa() {
 function aicb_page_logs() {
     if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
     global $wpdb;
+    $lt = $wpdb->prefix . AICB_LOG_TABLE;
+
+    // Clear all data
     if ( isset( $_POST['aicb_clear_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_clear_nonce'] ) ), 'aicb_clear_logs' ) ) {
-        $wpdb->query( "TRUNCATE TABLE {$wpdb->prefix}" . AICB_LOG_TABLE );
+        $wpdb->query( "TRUNCATE TABLE {$lt}" );
     }
-    $per  = 25;
-    $page = max( 1, (int)($_GET['paged'] ?? 1) );
-    $off  = ($page-1)*$per;
-    $total= (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->prefix}" . AICB_LOG_TABLE );
-    $rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, session_id, question, answer, provider, model, page_id, feedback, created_at FROM {$wpdb->prefix}" . AICB_LOG_TABLE . " ORDER BY id DESC LIMIT %d OFFSET %d", $per, $off ) );
-    $pages= ceil($total/$per);
+
+    $view_session = isset( $_GET['view_session'] ) ? sanitize_text_field( wp_unslash( $_GET['view_session'] ) ) : '';
+
+    if ( ! empty( $view_session ) ) {
+        // Transcript detail view
+        $messages = $wpdb->get_results( $wpdb->prepare(
+            "SELECT id, question, answer, provider, model, page_id, feedback, created_at FROM {$lt} WHERE session_id = %s ORDER BY id ASC",
+            $view_session
+        ) );
+        $session_info = $wpdb->get_row( $wpdb->prepare(
+            "SELECT MIN(created_at) as started, MAX(created_at) as ended, COUNT(*) as msg_count, MAX(provider) as provider FROM {$lt} WHERE session_id = %s",
+            $view_session
+        ) );
+
+        include AICB_DIR . 'admin/views/logs.php';
+        return;
+    }
+
+    // Chat Logs: 10 per page
+    $log_per  = 10;
+    $log_page = max( 1, (int)( $_GET['log_page'] ?? 1 ) );
+    $log_off  = ( $log_page - 1 ) * $log_per;
+    $log_total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$lt}" );
+    $log_rows  = $wpdb->get_results( $wpdb->prepare(
+        "SELECT id, session_id, question, answer, provider, model, page_id, feedback, created_at FROM {$lt} ORDER BY id DESC LIMIT %d OFFSET %d",
+        $log_per, $log_off
+    ) );
+    $log_pages = ceil( $log_total / $log_per );
+
+    // Conversations: 10 per page, grouped by session
+    $conv_per  = 10;
+    $conv_page = max( 1, (int)( $_GET['conv_page'] ?? 1 ) );
+    $conv_off  = ( $conv_page - 1 ) * $conv_per;
+
+    // Get total unique sessions
+    $conv_total = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT session_id) FROM {$lt}" );
+
+    // Get paginated sessions via subquery grouping
+    $conversations = $wpdb->get_results(
+        "SELECT session_id, started, ended, msg_count, first_question, provider FROM (
+            SELECT session_id,
+                   MIN(created_at) as started,
+                   MAX(created_at) as ended,
+                   COUNT(*) as msg_count,
+                   (SELECT question FROM {$lt} WHERE session_id = sessions.session_id ORDER BY id ASC LIMIT 1) as first_question,
+                   MAX(provider) as provider
+            FROM {$lt} sessions
+            GROUP BY session_id
+            ORDER BY ended DESC
+            LIMIT {$conv_per} OFFSET {$conv_off}
+        ) grouped"
+    );
+    $conv_pages = ceil( $conv_total / $conv_per );
 
     include AICB_DIR . 'admin/views/logs.php';
 }
