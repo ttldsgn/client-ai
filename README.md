@@ -1,4 +1,4 @@
-# AI Chatbot (Modular)
+# Client AI
 
 A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supports native function calling, dynamic multi-provider LLM adapters, a searchable global holiday seeder, and advanced prompt engineering controls.
 
@@ -38,12 +38,12 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 ## Installation & Setup
 
 ### 1. Installation
-1. Download or clone this repository into a folder named `ai-chatbot-modular`.
+1. Download or clone this repository into a folder named `client-ai`.
 2. Move the directory to your `/wp-content/plugins/` directory.
-3. Activate **AI Chatbot (Modular)** inside your WordPress **Plugins** screen.
+3. Activate **Client AI** inside your WordPress **Plugins** screen.
 
 ### 2. Basic Configuration
-1. Go to **AI Chatbot > Settings** in your WordPress admin menu.
+1. Go to **Client AI > Settings** in your WordPress admin menu.
 2. Select your active AI Provider and input your API credentials.
 3. Choose your desired model from the dynamic catalog.
 4. Set your primary brand color, chatbot title, and default welcome message.
@@ -76,6 +76,6 @@ This plugin is fully **open source** and released under the **GPL-2.0+ license**
 
 Members of the WordPress community are welcome to clone, fork, modify, and redistribute this codebase, provided that any modified distributions are also kept free, open source, and accessible to the public.
 
-If this modular AI chatbot integration saved you development hours, improved your customer experience, or made your site more accessible, please consider buying me a coffee to support my ongoing work and contributions to the open-source community!
+If this Client AI integration saved you development hours, improved your customer experience, or made your site more accessible, please consider buying me a coffee to support my ongoing work and contributions to the open-source community!
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
