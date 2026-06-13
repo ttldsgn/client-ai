@@ -405,15 +405,19 @@
         <h2>Display Options</h2>
         <table class="form-table">
             <tr>
-                <th>Enabled</th>
-                <td><label><input type="checkbox" name="aicb_enabled" value="1" <?= checked( aicb_opt('enabled'), 1 ) ?> /> Show chatbot on the website</label></td>
+                <th>Global Toggle</th>
+                <td>
+                    <label><input type="checkbox" name="aicb_enabled" value="1" <?= checked( aicb_opt('enabled'), 1 ) ?> />
+                    Enable the chatbot</label>
+                    <p class="description">When disabled, the chatbot is hidden everywhere — including pages using the <code>[ai_chatbot]</code> shortcode.</p>
+                </td>
             </tr>
             <tr>
                 <th>Auto-inject</th>
                 <td>
                     <label><input type="checkbox" name="aicb_show_on_all" value="1" <?= checked( aicb_opt('show_on_all'), 1 ) ?> />
-                    Add to all pages automatically</label>
-                    <p class="description">Uncheck to use shortcode <code>[ai_chatbot]</code> on specific pages only.</p>
+                    Add the chatbot to all pages automatically</label>
+                    <p class="description">When unchecked, use <code>[ai_chatbot]</code> on specific pages only. Requires "Global Toggle" above to be enabled.</p>
                 </td>
             </tr>
             <tr>
