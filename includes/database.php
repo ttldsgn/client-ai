@@ -38,6 +38,9 @@ function aicb_activate() {
     dbDelta( $logs );
     dbDelta( $qa );
 
+    // Create models table and seed from JSON
+    aicb_maybe_create_models_table();
+
     foreach ( aicb_default_options() as $key => $val ) {
         if ( false === get_option( 'aicb_' . $key ) ) {
             update_option( 'aicb_' . $key, $val );
@@ -56,6 +59,108 @@ function aicb_deactivate() {
     $timestamp = wp_next_scheduled( 'aicb_log_cleanup_cron' );
     if ( $timestamp ) {
         wp_unschedule_event( $timestamp, 'aicb_log_cleanup_cron' );
+    }
+}
+
+/**
+ * Create the models table and seed default models from assets/models.json.
+ */
+function aicb_maybe_create_models_table() {
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_MODEL_TABLE;
+    $charset = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE IF NOT EXISTS {$table} (
+        id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        provider_id     VARCHAR(64)     NOT NULL,
+        provider_name   VARCHAR(255)    NOT NULL DEFAULT '',
+        model_id        VARCHAR(128)    NOT NULL,
+        name            VARCHAR(255)    NOT NULL,
+        description     TEXT,
+        context_k       INT UNSIGNED    DEFAULT 0,
+        recommended     TINYINT(1)      DEFAULT 0,
+        supports_tools  TINYINT(1)      DEFAULT 1,
+        is_custom       TINYINT(1)      DEFAULT 0,
+        active          TINYINT(1)      DEFAULT 1,
+        sort_order      INT             DEFAULT 0,
+        created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        UNIQUE KEY provider_model (provider_id, model_id)
+    ) {$charset};";
+
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta( $sql );
+
+    aicb_seed_models_table();
+}
+
+/**
+ * Seed default models from assets/models.json using INSERT IGNORE.
+ * Safe to call repeatedly — never overwrites custom models.
+ */
+function aicb_seed_models_table() {
+    global $wpdb;
+    $table  = $wpdb->prefix . AICB_MODEL_TABLE;
+    $file   = AICB_DIR . 'assets/models.json';
+
+    if ( ! file_exists( $file ) ) return;
+
+    $json   = file_get_contents( $file );
+    $catalog = json_decode( $json, true );
+    if ( empty( $catalog['providers'] ) || ! is_array( $catalog['providers'] ) ) return;
+
+    $sort = 0;
+    foreach ( $catalog['providers'] as $provider ) {
+        $pid   = sanitize_key( $provider['id'] ?? '' );
+        $pname = sanitize_text_field( $provider['name'] ?? '' );
+        if ( empty( $pid ) || empty( $provider['models'] ) || ! is_array( $provider['models'] ) ) continue;
+
+        foreach ( $provider['models'] as $model ) {
+            $mid = sanitize_text_field( $model['id'] ?? '' );
+            if ( empty( $mid ) ) continue;
+
+            $wpdb->query( $wpdb->prepare(
+                "INSERT IGNORE INTO {$table}
+                    (provider_id, provider_name, model_id, name, description, context_k, recommended, supports_tools, is_custom, active, sort_order)
+                VALUES
+                    (%s, %s, %s, %s, %s, %d, %d, %d, 0, 1, %d)",
+                $pid,
+                $pname,
+                $mid,
+                sanitize_text_field( $model['name'] ?? '' ),
+                sanitize_textarea_field( $model['description'] ?? '' ),
+                (int) ( $model['context_k'] ?? 0 ),
+                ! empty( $model['recommended'] ) ? 1 : 0,
+                ! empty( $model['supports_tools'] ) ? 1 : 0,
+                $sort++
+            ) );
+        }
+    }
+}
+
+/**
+ * Migration for existing installations: create models table on admin_init.
+ * Uses a version option to run only once per plugin version.
+ */
+function aicb_models_migration_check() {
+    if ( get_option( 'aicb_models_table_version' ) === AICB_VERSION ) return;
+    aicb_maybe_create_models_table();
+    update_option( 'aicb_models_table_version', AICB_VERSION );
+}
+add_action( 'admin_init', 'aicb_models_migration_check' );
+
+/**
+ * Uninstall: drop all custom tables.
+ */
+function aicb_uninstall() {
+    global $wpdb;
+    $tables = [
+        $wpdb->prefix . AICB_LOG_TABLE,
+        $wpdb->prefix . AICB_QA_TABLE,
+        $wpdb->prefix . AICB_MODEL_TABLE,
+    ];
+    foreach ( $tables as $table ) {
+        $wpdb->query( "DROP TABLE IF EXISTS {$table}" );
     }
 }
 
