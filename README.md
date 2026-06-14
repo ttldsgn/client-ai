@@ -2,7 +2,7 @@
 
 A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supports native function calling, dynamic multi-provider LLM adapters, a searchable global holiday seeder, and advanced prompt engineering controls.
 
-[![Version](https://img.shields.io/badge/version-2.3.3-blue.svg)](#)
+[![Version](https://img.shields.io/badge/version-2.4.0-blue.svg)](#)
 [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](#)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](#)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](#)
@@ -31,6 +31,7 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 * **Custom Q&A Overrides**: Prioritized semantic matching table to bypass expensive LLM inference entirely for exact business FAQs and keywords.
 * **Accessible Slide-Out Interface (WCAG 2.2 AA)**: Fully responsive and transition-smooth sliding panel widgets for `tab-right` and `tab-left` placements.
 * **Enterprise Cryptography & Security**: Secure AES-256-GCM database encryption for API keys, strict Server-Side Request Forgery (SSRF) endpoint filters, WP nonce verification, and CDN-aware proxy IP rate limiting.
+* **Models Management**: A dedicated admin page for managing AI models per provider. Add custom models, edit existing ones, toggle active status, or reset a provider to its default models — all without editing JSON files. Built-in models are seeded from the plugin and automatically updated on upgrade.
 * **Audit Logs & Cleanup**: Paginated, filterable conversation logging with automated background cron cleanup tasks to manage database storage.
 
 ---
@@ -57,6 +58,29 @@ You can output the chatbot toggle on your site in two ways:
   ```text
   [ai_chatbot]
   ```
+
+## Models Management
+
+Client AI 2.4.0 introduces a database-driven Models system accessible via **Client AI > Models** in the WordPress admin. This replaces the old JSON-only catalog with a flexible, CRUD-capable approach.
+
+### Features
+- **Built-in Models**: Automatically seeded from `assets/models.json` on plugin activation. Marked as "Built-in" and protected from accidental deletion.
+- **Custom Models**: Add your own models for any provider. Enter the model ID exactly as required by the API, give it a display name, description, and configure tool support.
+- **Edit & Toggle**: Edit any model's display name, description, context window, and flags. Toggle models active/inactive without deleting them.
+- **Reset Provider to Defaults**: Remove all custom models for a provider and re-seed the factory defaults — useful after experimenting.
+
+### How It Works
+1. On activation, the plugin creates the `wp_aicb_models` database table.
+2. All models from `assets/models.json` are inserted using `INSERT IGNORE` — safe to re-run without overwriting custom models.
+3. The catalog functions (`aicb_get_catalog()`, `aicb_get_providers()`, `aicb_get_models()`) now query the database instead of reading JSON, while falling back to JSON if the table is empty.
+4. The Settings page provider grid and model dropdown continue to work identically — no JavaScript or HTML changes needed.
+
+### Developer Notes
+- Editing `assets/models.json` directly no longer has any effect after the first activation. The JSON file serves as the seed source; the database is the authoritative runtime source.
+- The `is_custom` flag (0 = seeded, 1 = user-added) enables clean separation between built-in and custom models.
+- The tool-support check in `aicb_adapter_openai_compat()` now queries the `supports_tools` column directly instead of relying on fragile string matching against provider names and URLs.
+
+---
 
 ## Developer Guide
 
