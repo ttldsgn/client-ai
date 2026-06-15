@@ -8,6 +8,7 @@ function aicb_admin_menu() {
     add_submenu_page( 'ai-chatbot', 'Settings',   'Settings',   'manage_options', 'ai-chatbot-settings',    'aicb_page_settings'  );
     add_submenu_page( 'ai-chatbot', 'Calendar',   'Calendar',   'manage_options', 'ai-chatbot-calendar',    'aicb_page_calendar'  );
     add_submenu_page( 'ai-chatbot', 'Custom Q&A', 'Custom Q&A', 'manage_options', 'ai-chatbot-qa',          'aicb_page_qa'        );
+    add_submenu_page( 'ai-chatbot', 'Models',     'Models',     'manage_options', 'ai-chatbot-models',       'aicb_page_models'    );
     add_submenu_page( 'ai-chatbot', 'Chat Logs',  'Chat Logs',  'manage_options', 'ai-chatbot-logs',        'aicb_page_logs'      );
 }
 
@@ -513,6 +514,134 @@ function aicb_page_qa() {
     $rows = $wpdb->get_results( "SELECT * FROM $table ORDER BY id DESC" );
 
     include AICB_DIR . 'admin/views/qa.php';
+}
+
+function aicb_page_models() {
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_MODEL_TABLE;
+
+    // Handle POST actions
+    if ( isset( $_POST['aicb_models_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_models_nonce'] ) ), 'aicb_models_action' ) ) {
+        $action = sanitize_text_field( $_POST['aicb_action'] ?? '' );
+
+        if ( $action === 'add' || $action === 'update' ) {
+            $provider_id   = sanitize_key( $_POST['provider_id'] ?? '' );
+            $provider_name = sanitize_text_field( $_POST['provider_name'] ?? $provider_id );
+            $model_id      = sanitize_text_field( $_POST['model_id'] ?? '' );
+            $name          = sanitize_text_field( $_POST['name'] ?? '' );
+            $description   = sanitize_textarea_field( $_POST['description'] ?? '' );
+            $context_k     = (int) ( $_POST['context_k'] ?? 0 );
+            $recommended   = isset( $_POST['recommended'] ) ? 1 : 0;
+            $supports_tools = isset( $_POST['supports_tools'] ) ? 1 : 0;
+            $is_custom     = 1;
+
+            if ( empty( $provider_id ) || empty( $model_id ) || empty( $name ) ) {
+                echo '<div class="notice notice-error"><p>Provider ID, Model ID, and Name are required.</p></div>';
+            } elseif ( $action === 'add' ) {
+                $exists = $wpdb->get_var( $wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$table} WHERE provider_id = %s AND model_id = %s",
+                    $provider_id, $model_id
+                ) );
+                if ( $exists ) {
+                    echo '<div class="notice notice-error"><p>This model already exists for this provider.</p></div>';
+                } else {
+                    $max_sort = (int) $wpdb->get_var( $wpdb->prepare(
+                        "SELECT MAX(sort_order) FROM {$table} WHERE provider_id = %s",
+                        $provider_id
+                    ) );
+                    $wpdb->insert( $table, [
+                        'provider_id'    => $provider_id,
+                        'provider_name'  => $provider_name,
+                        'model_id'       => $model_id,
+                        'name'           => $name,
+                        'description'    => $description,
+                        'context_k'      => $context_k,
+                        'recommended'    => $recommended,
+                        'supports_tools' => $supports_tools,
+                        'is_custom'      => $is_custom,
+                        'active'         => 1,
+                        'sort_order'     => $max_sort + 1,
+                    ], [ '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%d' ] );
+                    echo '<div class="notice notice-success"><p>Custom model added successfully.</p></div>';
+                }
+            } elseif ( $action === 'update' && isset( $_POST['model_db_id'] ) ) {
+                $db_id = (int) $_POST['model_db_id'];
+                $wpdb->update( $table, [
+                    'provider_name'  => $provider_name,
+                    'model_id'       => $model_id,
+                    'name'           => $name,
+                    'description'    => $description,
+                    'context_k'      => $context_k,
+                    'recommended'    => $recommended,
+                    'supports_tools' => $supports_tools,
+                ], [ 'id' => $db_id ], [ '%s', '%s', '%s', '%s', '%d', '%d', '%d' ], [ '%d' ] );
+                echo '<div class="notice notice-success"><p>Model updated successfully.</p></div>';
+            }
+        } elseif ( $action === 'delete' && isset( $_POST['model_db_id'] ) ) {
+            $db_id  = (int) $_POST['model_db_id'];
+            $model  = $wpdb->get_row( $wpdb->prepare( "SELECT id, is_custom FROM {$table} WHERE id = %d", $db_id ) );
+            if ( $model ) {
+                if ( ! $model->is_custom ) {
+                    echo '<div class="notice notice-warning"><p>Built-in models cannot be deleted. You can deactivate them instead.</p></div>';
+                } else {
+                    $wpdb->delete( $table, [ 'id' => $db_id ], [ '%d' ] );
+                    echo '<div class="notice notice-success"><p>Model deleted successfully.</p></div>';
+                }
+            }
+        } elseif ( $action === 'toggle_active' && isset( $_POST['model_db_id'] ) ) {
+            $db_id = (int) $_POST['model_db_id'];
+            $row   = $wpdb->get_row( $wpdb->prepare( "SELECT active FROM {$table} WHERE id = %d", $db_id ) );
+            if ( $row ) {
+                $new_active = $row->active ? 0 : 1;
+                $wpdb->update( $table, [ 'active' => $new_active ], [ 'id' => $db_id ], [ '%d' ], [ '%d' ] );
+                echo '<div class="notice notice-success"><p>Model ' . ( $new_active ? 'activated' : 'deactivated' ) . '.</p></div>';
+            }
+        } elseif ( $action === 'reset_provider' && isset( $_POST['reset_provider_id'] ) ) {
+            $reset_pid = sanitize_key( $_POST['reset_provider_id'] );
+            // Delete user-added models for this provider
+            $wpdb->delete( $table, [ 'provider_id' => $reset_pid, 'is_custom' => 1 ], [ '%s', '%d' ] );
+            // Re-seed defaults from JSON for this provider
+            aicb_seed_models_table();
+            echo '<div class="notice notice-success"><p>Provider "' . esc_html( $reset_pid ) . '" has been reset to defaults.</p></div>';
+        }
+    }
+
+    // Fetch all models grouped by provider
+    $rows = $wpdb->get_results(
+        "SELECT * FROM {$table} ORDER BY sort_order ASC, id ASC"
+    );
+
+    // Group by provider
+    $providers_models = [];
+    foreach ( $rows as $row ) {
+        $pid = $row->provider_id;
+        if ( ! isset( $providers_models[ $pid ] ) ) {
+            $providers_models[ $pid ] = [
+                'provider_name' => $row->provider_name ?: $pid,
+                'models'        => [],
+            ];
+        }
+        $providers_models[ $pid ]['models'][] = $row;
+    }
+
+    // Get unique provider IDs for the dropdown (include from DB and registered providers)
+    $registered_providers = aicb_get_providers();
+    $provider_options = [];
+    foreach ( $registered_providers as $pid => $pdata ) {
+        $provider_options[ $pid ] = $pdata['name'] ?? $pid;
+    }
+    // Also include any providers in DB that might not be in registered list
+    foreach ( $providers_models as $pid => $data ) {
+        if ( ! isset( $provider_options[ $pid ] ) ) {
+            $provider_options[ $pid ] = $data['provider_name'];
+        }
+    }
+
+    $edit_id  = isset( $_GET['edit_model'] ) ? (int) $_GET['edit_model'] : 0;
+    $edit_row = $edit_id ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $edit_id ) ) : null;
+
+    include AICB_DIR . 'admin/views/models.php';
 }
 
 function aicb_page_logs() {

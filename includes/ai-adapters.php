@@ -2,15 +2,77 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Retrieve the static models and API provider specifications catalog.
+ * Retrieve the models and API provider specifications catalog from the database,
+ * falling back to the JSON seed file only if the DB table is empty.
  */
 function aicb_get_catalog() {
     static $catalog = null;
     if ( $catalog !== null ) return $catalog;
-    $file = AICB_DIR . 'assets/models.json';
-    if ( ! file_exists( $file ) ) return [ 'providers' => [] ];
-    $json = file_get_contents( $file );
-    $catalog = json_decode( $json, true ) ?: [ 'providers' => [] ];
+
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_MODEL_TABLE;
+
+    // Check if table exists and has rows
+    $table_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) );
+    if ( ! $table_exists ) {
+        // Fallback to JSON if DB table doesn't exist yet
+        $file = AICB_DIR . 'assets/models.json';
+        if ( ! file_exists( $file ) ) return [ 'providers' => [] ];
+        $json = file_get_contents( $file );
+        $catalog = json_decode( $json, true ) ?: [ 'providers' => [] ];
+        return $catalog;
+    }
+
+    $rows = $wpdb->get_results(
+        "SELECT provider_id, provider_name, model_id, name, description, context_k, recommended, supports_tools
+         FROM {$table}
+         WHERE active = 1
+         ORDER BY sort_order ASC, id ASC"
+    );
+
+    if ( empty( $rows ) ) {
+        // Fallback to JSON if DB is empty (first run, table just created but seeding may not have happened)
+        $file = AICB_DIR . 'assets/models.json';
+        if ( ! file_exists( $file ) ) return [ 'providers' => [] ];
+        $json = file_get_contents( $file );
+        $catalog = json_decode( $json, true ) ?: [ 'providers' => [] ];
+        return $catalog;
+    }
+
+    // Build the catalog structure grouped by provider
+    $provider_map = [];
+    $provider_order = [];
+
+    foreach ( $rows as $row ) {
+        $pid = $row->provider_id;
+        if ( ! isset( $provider_map[ $pid ] ) ) {
+            $provider_map[ $pid ] = [
+                'id'       => $pid,
+                'name'     => $row->provider_name ?: $pid,
+                'website'  => '',
+                'key_label' => '',
+                'key_help'  => '',
+                'docs_url'  => '',
+                'models'   => [],
+            ];
+            $provider_order[] = $pid;
+        }
+
+        $provider_map[ $pid ]['models'][] = [
+            'id'             => $row->model_id,
+            'name'           => $row->name,
+            'description'    => $row->description,
+            'context_k'      => (int) $row->context_k,
+            'recommended'    => ! empty( $row->recommended ),
+            'supports_tools' => ! empty( $row->supports_tools ),
+        ];
+    }
+
+    $catalog = [ 'providers' => [] ];
+    foreach ( $provider_order as $pid ) {
+        $catalog['providers'][] = $provider_map[ $pid ];
+    }
+
     return $catalog;
 }
 
@@ -197,20 +259,35 @@ function aicb_adapter_openai_compat( $endpoint, $key, $model, $system, $question
         'messages'   => $messages,
     ];
 
+    // Check tool support: query the DB directly instead of scanning the JSON catalog
     $has_tool_support = false;
-    $catalog  = aicb_get_catalog();
-    foreach ( $catalog['providers'] as $p ) {
-        if ( $p['id'] === 'custom' || strpos( $endpoint, $p['id'] ) !== false || strpos( $endpoint, $p['website'] ?? '' ) !== false ) {
-            foreach ( $p['models'] ?? [] as $m ) {
-                if ( $m['id'] === $model && ! empty( $m['supports_tools'] ) ) {
-                    $has_tool_support = true;
-                    break 2;
+    global $wpdb;
+    $mtable = $wpdb->prefix . AICB_MODEL_TABLE;
+    $mtable_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $mtable ) );
+    if ( $mtable_exists ) {
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT supports_tools FROM {$mtable} WHERE model_id = %s AND active = 1 LIMIT 1",
+            $model
+        ) );
+        if ( $row && ! empty( $row->supports_tools ) ) {
+            $has_tool_support = true;
+        }
+    } else {
+        // Fallback to old catalog scan if DB table doesn't exist yet
+        $catalog  = aicb_get_catalog();
+        foreach ( $catalog['providers'] as $p ) {
+            if ( $p['id'] === 'custom' || strpos( $endpoint, $p['id'] ) !== false || strpos( $endpoint, $p['website'] ?? '' ) !== false ) {
+                foreach ( $p['models'] ?? [] as $m ) {
+                    if ( $m['id'] === $model && ! empty( $m['supports_tools'] ) ) {
+                        $has_tool_support = true;
+                        break 2;
+                    }
                 }
             }
         }
     }
     if ( ! $has_tool_support && aicb_opt( 'enable_calendar_tools' ) ) {
-        $has_tool_support = true; 
+        $has_tool_support = true;
     }
 
     if ( aicb_opt( 'enable_calendar_tools' ) && $has_tool_support ) {
