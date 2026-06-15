@@ -98,7 +98,7 @@ function aicb_admin_enqueue_scripts( $hook_suffix ) {
     if ( strpos( $hook_suffix, 'ai-chatbot-calendar' ) !== false ) {
         wp_enqueue_script( 'jquery-ui-datepicker' );
         wp_enqueue_script( 'jquery-ui-autocomplete' ); 
-        wp_enqueue_style( 'jquery-ui-style', 'https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css', [], '1.12.1' );
+        wp_enqueue_style( 'jquery-ui-style', AICB_URL . 'assets/jquery-ui.css', [], '1.12.1' );
     }
 }
 
@@ -121,7 +121,9 @@ function aicb_admin_calendar_js() {
             $('.aicb-datepicker').datepicker({ 
                 dateFormat: 'mm/dd/yy', 
                 changeMonth: true, 
-                changeYear: true 
+                changeYear: true,
+                prevText: '«',
+                nextText: '»'
             });
             
             var countries = <?php echo wp_json_encode( $autocomplete_data ); ?>;
@@ -270,12 +272,21 @@ function aicb_meta_box_callback( $post ) {
 
 add_action( 'save_post', 'aicb_save_meta_box' );
 function aicb_save_meta_box( $post_id ) {
-    if ( ! isset( $_POST['aicb_meta_box_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_meta_box_save' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_post', $post_id ) ) return;
-    delete_post_meta( $post_id, '_aicb_page_digest' );
-    delete_post_meta( $post_id, '_aicb_digest_timestamp' );
-    update_post_meta( $post_id, '_aicb_include_kb', isset( $_POST['aicb_include_kb'] ) ? '1' : '0' );
+
+    // Page Builder & Core Save: Delete cache unconditionally for allowed post types
+    $post_type = get_post_type( $post_id );
+    $allowed_types = (array) aicb_opt( 'indexed_post_types' );
+    if ( in_array( $post_type, $allowed_types, true ) ) {
+        delete_post_meta( $post_id, '_aicb_page_digest' );
+        delete_post_meta( $post_id, '_aicb_digest_timestamp' );
+    }
+
+    // Standard metabox option update: Nonce is only verified when updating options via standard edit interface
+    if ( isset( $_POST['aicb_meta_box_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_meta_box_save' ) ) {
+        update_post_meta( $post_id, '_aicb_include_kb', isset( $_POST['aicb_include_kb'] ) ? '1' : '0' );
+    }
 }
 
 /* =========================================================
@@ -495,6 +506,7 @@ function aicb_page_qa() {
         if ( $action === 'add' ) {
             $wpdb->insert( $table, [
                 'question' => sanitize_textarea_field( wp_unslash( $_POST['question'] ?? '' ) ),
+                'answer'   => sanitize_textarea_field( wp_unslash( $_POST['answer'] ?? '' ) ),
                 'active'   => 1,
             ], [ '%s', '%s', '%d' ] );
         } elseif ( $action === 'update' && isset( $_POST['qa_id'] ) ) {
@@ -691,7 +703,7 @@ function aicb_page_logs() {
     $conv_total = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT session_id) FROM {$lt}" );
 
     // Get paginated sessions via subquery grouping
-    $conversations = $wpdb->get_results(
+    $conversations = $wpdb->get_results( $wpdb->prepare(
         "SELECT session_id, started, ended, msg_count, first_question, provider FROM (
             SELECT session_id,
                    MIN(created_at) as started,
@@ -702,9 +714,11 @@ function aicb_page_logs() {
             FROM {$lt} sessions
             GROUP BY session_id
             ORDER BY ended DESC
-            LIMIT {$conv_per} OFFSET {$conv_off}
-        ) grouped"
-    );
+            LIMIT %d OFFSET %d
+        ) grouped",
+        $conv_per,
+        $conv_off
+    ) );
     $conv_pages = ceil( $conv_total / $conv_per );
 
     include AICB_DIR . 'admin/views/logs.php';

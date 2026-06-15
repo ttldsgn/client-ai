@@ -270,6 +270,14 @@ function aicb_get_page_context( $page_id ) {
     }
 
     $new_digest = sanitize_textarea_field( $result['answer'] );
+    
+    // Fix 1: Truncate page digests on save to ~500 characters
+    if ( function_exists( 'mb_substr' ) ) {
+        $new_digest = mb_substr( $new_digest, 0, 500 );
+    } else {
+        $new_digest = substr( $new_digest, 0, 500 );
+    }
+
     update_post_meta( $page_id, '_aicb_page_digest', $new_digest );
     update_post_meta( $page_id, '_aicb_digest_timestamp', time() );
     return $new_digest;
@@ -327,29 +335,44 @@ function aicb_permissive_search_filter( $search, $wp_query ) {
 
 /**
  * Primary multi-page contextual fetch loop (Strategy A).
+ * Caps the cumulative context character length to stay strictly within a low token budget.
  */
 function aicb_retrieve_relevant_contexts( $question, $current_page_id = 0 ) {
     $allowed_types = (array) aicb_opt( 'indexed_post_types' );
     if ( empty( $allowed_types ) ) return '';
-    $contexts   = [];
-    $pulled_ids = [];
+    $contexts     = [];
+    $pulled_ids   = [];
+    $total_length = 0;
 
     if ( $current_page_id > 0 && aicb_is_page_allowed_for_chatbot( $current_page_id ) ) {
         $current_context = aicb_get_raw_page_content( $current_page_id );
         if ( ! empty( $current_context ) ) {
-            $contexts[]   = "--- ACTIVE CURRENT PAGE REFERENCE (Title: " . get_the_title( $current_page_id ) . " | Link: " . get_permalink( $current_page_id ) . ") ---\n" . $current_context;
-            $pulled_ids[] = $current_page_id;
+            $context_block = "--- ACTIVE CURRENT PAGE REFERENCE (Title: " . get_the_title( $current_page_id ) . " | Link: " . get_permalink( $current_page_id ) . ") ---\n" . $current_context;
+            $contexts[]     = $context_block;
+            $total_length   += function_exists( 'mb_strlen' ) ? mb_strlen( $context_block ) : strlen( $context_block );
+            $pulled_ids[]   = $current_page_id;
         }
+    }
+
+    // Fix 2: Stop early if the current active page alone already exceeds the context cap
+    if ( $total_length >= 3000 ) {
+        return implode( "\n\n", $contexts );
     }
 
     $args = [ 'post_type' => $allowed_types, 'posts_per_page' => 100, 'post_status' => 'publish', 'fields' => 'ids', 'post__not_in' => $pulled_ids ];
     $query = new WP_Query( $args );
     if ( $query->have_posts() ) {
         foreach ( $query->posts as $post_id ) {
+            // Fix 2: Stop fetching and break immediately if we exceed ~3,000 characters
+            if ( $total_length >= 3000 ) {
+                break;
+            }
             if ( ! aicb_is_page_allowed_for_chatbot( $post_id ) ) continue;
             $context = aicb_get_page_context( $post_id );
             if ( ! empty( $context ) ) {
-                $contexts[] = "--- ASSOCIATED KNOWLEDGE REFERENCE (Title: " . get_the_title( $post_id ) . " | Link: " . get_permalink( $post_id ) . ") ---\n" . $context;
+                $context_block = "--- ASSOCIATED KNOWLEDGE REFERENCE (Title: " . get_the_title( $post_id ) . " | Link: " . get_permalink( $post_id ) . ") ---\n" . $context;
+                $contexts[]     = $context_block;
+                $total_length   += function_exists( 'mb_strlen' ) ? mb_strlen( $context_block ) : strlen( $context_block );
             }
         }
     }
