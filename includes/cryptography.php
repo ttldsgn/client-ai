@@ -45,6 +45,7 @@ function aicb_default_options() {
         'handover_secondary_bg'   => '#f1f5f9',
         'handover_secondary_text' => '#334155',
         'handover_btn_radius'     => 4,
+        'always_show_handover_buttons' => 0,
         // AI Identity and Presets
         'business_name'           => '',
         'pronoun_perspective'     => 'first-plural', 
@@ -153,7 +154,7 @@ function aicb_get_key( $provider ) {
         if ( aicb_has_secure_salts() ) {
             $encrypted = aicb_encrypt( $val );
             if ( ! empty( $encrypted ) ) {
-                update_option( 'aicb_key_' . sanitize_key( $provider ), $encrypted );
+                update_option( 'aicb_key_' . $provider, $encrypted );
                 return $val;
             }
         }

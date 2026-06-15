@@ -256,6 +256,12 @@
                             <input type="number" name="aicb_handover_btn_radius" value="<?= esc_attr( aicb_opt('handover_btn_radius') ) ?>" min="0" max="50" class="small-text" />
                         </label>
                     </fieldset>
+                    <p style="margin-top:12px;">
+                        <label>
+                            <input type="checkbox" name="aicb_always_show_handover_buttons" value="1" <?= checked( aicb_opt('always_show_handover_buttons'), 1 ) ?> />
+                            <strong>Always show buttons in chat window?</strong> (Will display at the bottom of the chat window, below the message input box)
+                        </label>
+                    </p>
                 </td>
             </tr>
         </table>

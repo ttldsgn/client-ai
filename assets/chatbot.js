@@ -155,6 +155,42 @@
     form.appendChild(sendBtn);
     win.appendChild(form);
 
+    /* Persistent Handover Panel (Always show option) */
+    if (cfg.enableHandover && cfg.alwaysShowButtons) {
+      var persistentHandover = el('div', { 
+        'class': 'aicb-handover-container', 
+        'style': 'margin-top: 4px; margin-bottom: 8px; padding-left: 16px; padding-right: 16px;',
+        'role': 'group', 
+        'aria-label': 'Support options' 
+      });
+
+      if (cfg.primaryBtnText && cfg.primaryBtnUrl) {
+        var pBtn = el('a', {
+          'class': 'aicb-btn aicb-btn-primary',
+          'href': cfg.primaryBtnUrl,
+          'target': '_blank',
+          'rel': 'noopener noreferrer',
+          'role': 'button'
+        }, cfg.primaryBtnText);
+        persistentHandover.appendChild(pBtn);
+      }
+
+      if (cfg.secondaryBtnText && cfg.secondaryBtnUrl) {
+        var sBtn = el('a', {
+          'class': 'aicb-btn aicb-btn-secondary',
+          'href': cfg.secondaryBtnUrl,
+          'target': '_blank',
+          'rel': 'noopener noreferrer',
+          'role': 'button'
+        }, cfg.secondaryBtnText);
+        persistentHandover.appendChild(sBtn);
+      }
+
+      if (persistentHandover.children.length > 0) {
+        win.appendChild(persistentHandover);
+      }
+    }
+
     /* Dynamic Footer */
     if (cfg.footerText && cfg.footerText.trim() !== '') {
       win.appendChild(el('div', { id: 'aicb-footer' }, cfg.footerText));
@@ -163,7 +199,7 @@
     // Append to live DOM FIRST [1.8.7] [3]
     root.appendChild(win);
 
-    /* Welcome message (Now successfully finds aicb-messages container) [1.8.7] [3] */
+    /* Welcome message */
     if (cfg.welcome) {
       addMsg(cfg.welcome, 'bot');
     }

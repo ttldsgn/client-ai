@@ -47,19 +47,25 @@ function aicb_enqueue_frontend() {
     $enable_feedback = aicb_opt( 'enable_feedback' );
 
     wp_localize_script( 'aicb-script', 'aicbData', [
-        'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
-        'nonce'          => wp_create_nonce( 'aicb_chat' ),
-        'position'       => aicb_opt( 'position' ),
-        'color'          => $primary_color,
-        'icon'           => aicb_opt( 'icon' ),
-        'title'          => $chat_title,
-        'welcome'        => aicb_opt( 'welcome_msg' ),
-        'placeholder'    => aicb_opt( 'placeholder' ),
-        'footerText'     => aicb_opt( 'footer_text' ),
-        'pageId'         => get_queried_object_id() ?: 0,
-        'language'       => $chatbot_language,
-        'enableFeedback' => $enable_feedback ? true : false,
-        'feedbackNonce'  => $enable_feedback ? wp_create_nonce( 'aicb_feedback' ) : '',
+        'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
+        'nonce'             => wp_create_nonce( 'aicb_chat' ),
+        'position'          => aicb_opt( 'position' ),
+        'color'             => $primary_color,
+        'icon'              => aicb_opt( 'icon' ),
+        'title'             => $chat_title,
+        'welcome'           => aicb_opt( 'welcome_msg' ),
+        'placeholder'       => aicb_opt( 'placeholder' ),
+        'footerText'        => aicb_opt( 'footer_text' ),
+        'pageId'            => get_queried_object_id() ?: 0,
+        'language'          => $chatbot_language,
+        'enableFeedback'    => $enable_feedback ? true : false,
+        'feedbackNonce'     => $enable_feedback ? wp_create_nonce( 'aicb_feedback' ) : '',
+        'enableHandover'    => aicb_opt( 'enable_handover' ) ? true : false,
+        'alwaysShowButtons' => aicb_opt( 'always_show_handover_buttons' ) ? true : false,
+        'primaryBtnText'    => esc_html( aicb_opt( 'handover_btn_text' ) ),
+        'primaryBtnUrl'     => aicb_clean_url( aicb_get_handover_url() ),
+        'secondaryBtnText'  => esc_html( aicb_opt( 'contact_btn_text' ) ),
+        'secondaryBtnUrl'   => aicb_clean_url( aicb_opt( 'contact_btn_url' ) ),
     ] );
 }
 
@@ -111,7 +117,14 @@ function aicb_ajax_chat() {
 
     if ( aicb_opt( 'enable_handover' ) && $confirm ) {
         if ( aicb_is_positive_confirmation( $question ) ) {
-            $answer = "Great! Please use the options below to connect with us:";
+            $perspective = aicb_opt( 'pronoun_perspective' );
+            $target = 'us';
+            if ( $perspective === 'first-singular' ) {
+                $target = 'me';
+            } elseif ( $perspective === 'neutral' ) {
+                $target = 'the team';
+            }
+            $answer = sprintf( "Great! Please use the options below to connect with %s:", $target );
             aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, 'custom', 'handover-confirmed' );
             wp_send_json_success( [
                 'answer'           => $answer,
@@ -121,7 +134,7 @@ function aicb_ajax_chat() {
                 'primaryBtnText'   => esc_html( aicb_opt( 'handover_btn_text' ) ),
                 'primaryBtnUrl'    => aicb_clean_url( aicb_get_handover_url() ),
                 'secondaryBtnText' => esc_html( aicb_opt( 'contact_btn_text' ) ),
-        'secondaryBtnUrl'  => aicb_clean_url( aicb_opt( 'contact_btn_url' ) )
+                'secondaryBtnUrl'  => aicb_clean_url( aicb_opt( 'contact_btn_url' ) )
             ] );
         }
     }
