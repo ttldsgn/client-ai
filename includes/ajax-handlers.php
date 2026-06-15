@@ -148,12 +148,26 @@ function aicb_ajax_chat() {
         $page_context = "\n\n--- KNOWLEDGE BASE DIRECTORY ---\n" . $page_context . "\n--- END DIRECTORY ---";
     }
 
-    $custom_qas = $wpdb->get_results( "SELECT question, answer FROM {$qa_table} WHERE active = 1" );
-    $custom_kb  = "";
-    if ( ! empty( $custom_qas ) ) {
-        $custom_kb = "\n\n--- CORE BUSINESS RULES & FAQS (PRIORITY) ---\nUse these exact rules and answers to reason and cross-reference. Always prioritize these facts over general knowledge. After cross-referencing, output ONLY your final answer — never include the reasoning steps or alternative scenarios in your response:\n";
-        foreach ( $custom_qas as $q ) {
-            $custom_kb .= "Q: {$q->question}\nA: {$q->answer}\n\n";
+    // Pre-filter Q&A by keyword matching to avoid KB bloat in context window
+    $custom_kb = "";
+    $keywords = aicb_extract_keywords( $question );
+    if ( ! empty( $keywords ) ) {
+        $like_clauses = [];
+        $params = [];
+        foreach ( $keywords as $kw ) {
+            $like_clauses[] = "LOWER(question) LIKE LOWER(%s)";
+            $params[] = '%' . $wpdb->esc_like( $kw ) . '%';
+        }
+        $like_sql = implode( ' OR ', $like_clauses );
+        $custom_qas = $wpdb->get_results( $wpdb->prepare(
+            "SELECT question, answer FROM {$qa_table} WHERE active = 1 AND ({$like_sql}) LIMIT 5",
+            $params
+        ) );
+        if ( ! empty( $custom_qas ) ) {
+            $custom_kb = "\n\n--- CORE BUSINESS RULES & FAQS (PRIORITY) ---\nUse these exact rules and answers to reason and cross-reference. Always prioritize these facts over general knowledge. After cross-referencing, output ONLY your final answer — never include the reasoning steps or alternative scenarios in your response:\n";
+            foreach ( $custom_qas as $q ) {
+                $custom_kb .= "Q: {$q->question}\nA: {$q->answer}\n\n";
+            }
         }
     }
 
@@ -211,11 +225,17 @@ function aicb_ajax_chat() {
         }
     }
 
-    $system_prompt = aicb_opt( 'system_prompt' ) . "\n\n" . $identity_prompt . $perspective_prompt . $tone_prompt . $temporal_pivot . $tool_instruction . $negative_constraints . $language_instruction . $custom_kb . $page_context;
+    $system_content = aicb_opt( 'system_prompt' ) . "\n\n" . $identity_prompt . $perspective_prompt . $tone_prompt . $temporal_pivot . $tool_instruction . $negative_constraints . $language_instruction . $custom_kb . $page_context;
     $provider = aicb_opt( 'provider' );
     $model    = aicb_opt( 'model' );
 
-    $result = aicb_call_ai( $provider, $model, $system_prompt, $question, aicb_opt( 'max_tokens' ) );
+    // Build messages array (no session history to keep token usage low on free-tier models)
+    $messages = [
+        [ 'role' => 'system', 'content' => $system_content ],
+        [ 'role' => 'user',   'content' => $question ],
+    ];
+
+    $result = aicb_call_ai( $provider, $model, $messages, aicb_opt( 'max_tokens' ) );
 
     if ( is_wp_error( $result ) ) {
         $err_code = $result->get_error_code();
@@ -294,6 +314,35 @@ function aicb_detect_handover( $text ) {
         if ( strpos( $text, $phrase ) !== false ) return true;
     }
     return false;
+}
+
+/**
+ * Extract meaningful keywords from a question for Q&A pre-filtering.
+ * Removes common stop words and short words, returns unique lowercase tokens.
+ */
+function aicb_extract_keywords( $question ) {
+    $stop_words = [ 'a', 'an', 'the', 'is', 'it', 'am', 'are', 'was', 'were', 'be', 'been', 'being',
+        'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
+        'can', 'shall', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into',
+        'through', 'during', 'before', 'after', 'above', 'below', 'between', 'out', 'off', 'over',
+        'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how',
+        'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor',
+        'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'about', 'up', 'what',
+        'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'i', 'me', 'my', 'myself', 'you',
+        'your', 'yours', 'yourself', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself',
+        'we', 'our', 'ours', 'ourselves', 'they', 'them', 'their', 'theirs', 'themselves', 'please',
+        'help', 'tell', 'know', 'want', 'need', 'like', 'get', 'thanks', 'thank', 'hi', 'hello',
+        'hey' ];
+
+    $words = preg_split( '/[^a-zA-Z0-9]+/', strtolower( $question ) );
+    $keywords = [];
+    foreach ( $words as $w ) {
+        $w = trim( $w );
+        if ( strlen( $w ) < 3 ) continue;
+        if ( in_array( $w, $stop_words, true ) ) continue;
+        $keywords[ $w ] = true;
+    }
+    return array_keys( $keywords );
 }
 
 function aicb_clean_url( $url ) {
