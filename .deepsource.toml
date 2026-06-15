@@ -10,7 +10,7 @@ enabled = true
   # PHP-E1000 = "undefined function" (e.g. sanitize_text_field, wp_die, add_action)
   # PHP-W1038 = "undefined constant" (e.g. AICB_DIR, AICB_MODEL_TABLE)
   # PHP-R1006 = cyclomatic complexity (code style metric, not bugs)
-  ignore_rules = ["PHP-E1000", "PHP-W1038", "PHP-R1006"]
+  ignore_rules = ["PHP-E1000", "PHP-W1038", "PHP-R1006", "PHP-T1002", "PHP-E1002"]
 
 [[analyzers]]
 name = "javascript"

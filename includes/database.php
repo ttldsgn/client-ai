@@ -256,7 +256,11 @@ function aicb_get_page_context( $page_id ) {
     $model    = aicb_opt( 'model' );
     $system   = "You are a factual summarization agent. Extract a dense, objective, structured digest of the provided text. Focus only on facts, customer service details, pricing, policies, and schedules. Avoid conversational filler or metadata. Return only the plain-text factual details.";
     $prompt   = "Title: " . get_the_title( $page_id ) . "\n\nContent:\n" . $raw_content;
-    $result   = aicb_call_ai( $provider, $model, $system, $prompt, 300 );
+    $messages = [
+        [ 'role' => 'system', 'content' => $system ],
+        [ 'role' => 'user',   'content' => $prompt ],
+    ];
+    $result   = aicb_call_ai( $provider, $model, $messages, 300 );
 
     if ( is_wp_error( $result ) ) {
         error_log( 'AICB Cache Generation Failure: ' . $result->get_error_message() );

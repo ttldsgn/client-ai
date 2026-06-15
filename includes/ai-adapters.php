@@ -182,27 +182,77 @@ function aicb_get_calendar_tool_definition_anthropic() {
 }
 
 /**
- * Route incoming queries to their configured AI adapters.
+ * Helper: Extract system prompt string from a messages array.
+ * Assumes the first message with role 'system' contains the system prompt content.
  */
-function aicb_call_ai( $provider, $model, $system, $question, $max_tokens ) {
+function aicb_extract_system_prompt( $messages ) {
+    foreach ( $messages as $msg ) {
+        if ( isset( $msg['role'] ) && $msg['role'] === 'system' ) {
+            return $msg['content'] ?? '';
+        }
+    }
+    return '';
+}
+
+/**
+ * Helper: Filter out system messages from a messages array, returning only conversation messages.
+ */
+function aicb_filter_conversation_messages( $messages ) {
+    return array_values( array_filter( $messages, function( $msg ) {
+        return isset( $msg['role'] ) && $msg['role'] !== 'system';
+    } ) );
+}
+
+/**
+ * Helper: Execute wp_remote_post with a single retry on transient 502/503 errors.
+ */
+function aicb_remote_post_retry( $url, $args, $max_retries = 1 ) {
+    $attempt = 0;
+    do {
+        $response = wp_remote_post( $url, $args );
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+        $code = wp_remote_retrieve_response_code( $response );
+        if ( $code !== 502 && $code !== 503 ) {
+            return $response;
+        }
+        $attempt++;
+        if ( $attempt <= $max_retries ) {
+            usleep( 500000 );
+        }
+    } while ( $attempt <= $max_retries );
+    return $response;
+}
+
+/**
+ * Route incoming queries to their configured AI adapters.
+ *
+ * @param string $provider   Provider ID.
+ * @param string $model      Model name/ID.
+ * @param array  $messages   Full messages array (system + user/assistant history).
+ * @param int    $max_tokens Max tokens for response.
+ * @return array|WP_Error
+ */
+function aicb_call_ai( $provider, $model, $messages, $max_tokens ) {
     $key = aicb_get_key( $provider );
     if ( $provider === 'custom' ) {
-        return aicb_adapter_openai_compat( aicb_opt( 'custom_endpoint' ), $key, aicb_opt( 'custom_model_id' ) ?: $model, $system, $question, $max_tokens );
+        return aicb_adapter_openai_compat( aicb_opt( 'custom_endpoint' ), $key, aicb_opt( 'custom_model_id' ) ?: $model, $messages, $max_tokens );
     }
     if ( empty( $key ) ) {
         return new WP_Error( 'no_key', 'No API key configured for this provider.' );
     }
     switch ( $provider ) {
         case 'anthropic':
-            return aicb_adapter_anthropic( $key, $model, $system, $question, $max_tokens );
+            return aicb_adapter_anthropic( $key, $model, $messages, $max_tokens );
         case 'groq':
-            return aicb_adapter_openai_compat( 'https://api.groq.com/openai/v1/chat/completions', $key, $model, $system, $question, $max_tokens );
+            return aicb_adapter_openai_compat( 'https://api.groq.com/openai/v1/chat/completions', $key, $model, $messages, $max_tokens );
         case 'google':
-            return aicb_adapter_google( $key, $model, $system, $question, $max_tokens );
+            return aicb_adapter_google( $key, $model, $messages, $max_tokens );
         case 'cerebras':
-            return aicb_adapter_openai_compat( 'https://api.cerebras.ai/v1/chat/completions', $key, $model, $system, $question, $max_tokens );
+            return aicb_adapter_openai_compat( 'https://api.cerebras.ai/v1/chat/completions', $key, $model, $messages, $max_tokens );
         case 'mistral':
-            return aicb_adapter_openai_compat( 'https://api.mistral.ai/v1/chat/completions', $key, $model, $system, $question, $max_tokens );
+            return aicb_adapter_openai_compat( 'https://api.mistral.ai/v1/chat/completions', $key, $model, $messages, $max_tokens );
         default:
             return new WP_Error( 'unknown_provider', 'Unknown provider: ' . $provider );
     }
@@ -210,21 +260,34 @@ function aicb_call_ai( $provider, $model, $system, $question, $max_tokens ) {
 
 /**
  * AI Adapter: Anthropic Claude Messages API
+ *
+ * @param string $key        API key.
+ * @param string $model      Model name.
+ * @param array  $messages   Full messages array (system prompt extracted automatically).
+ * @param int    $max_tokens Max tokens.
+ * @return array|WP_Error
  */
-function aicb_adapter_anthropic( $key, $model, $system, $question, $max_tokens ) {
-    $response = wp_remote_post( 'https://api.anthropic.com/v1/messages', [
+function aicb_adapter_anthropic( $key, $model, $messages, $max_tokens ) {
+    $system    = aicb_extract_system_prompt( $messages );
+    $conv_msgs = aicb_filter_conversation_messages( $messages );
+
+    $body = [
+        'model'      => $model,
+        'max_tokens' => (int) $max_tokens,
+        'messages'   => ! empty( $conv_msgs ) ? $conv_msgs : [ [ 'role' => 'user', 'content' => '' ] ],
+    ];
+    if ( ! empty( $system ) ) {
+        $body['system'] = $system;
+    }
+
+    $response = aicb_remote_post_retry( 'https://api.anthropic.com/v1/messages', [
         'timeout' => 30,
         'headers' => [
             'Content-Type'      => 'application/json',
             'x-api-key'         => $key,
             'anthropic-version' => '2023-06-01',
         ],
-        'body' => wp_json_encode( [
-            'model'      => $model,
-            'max_tokens' => (int) $max_tokens,
-            'system'     => $system,
-            'messages'   => [ [ 'role' => 'user', 'content' => $question ] ],
-        ] ),
+        'body' => wp_json_encode( $body ),
     ] );
     if ( is_wp_error( $response ) ) return $response;
     $code = wp_remote_retrieve_response_code( $response );
@@ -238,8 +301,15 @@ function aicb_adapter_anthropic( $key, $model, $system, $question, $max_tokens )
 
 /**
  * AI Adapter: OpenAI-Compatible / Custom Endpoint API
+ *
+ * @param string $endpoint   API endpoint URL.
+ * @param string $key        API key.
+ * @param string $model      Model name.
+ * @param array  $messages   Full messages array (including system).
+ * @param int    $max_tokens Max tokens.
+ * @return array|WP_Error
  */
-function aicb_adapter_openai_compat( $endpoint, $key, $model, $system, $question, $max_tokens ) {
+function aicb_adapter_openai_compat( $endpoint, $key, $model, $messages, $max_tokens ) {
     if ( empty( $endpoint ) ) return new WP_Error( 'no_endpoint', 'No endpoint configured.' );
     if ( ! aicb_is_valid_endpoint( $endpoint ) ) return new WP_Error( 'unsafe_endpoint', 'The target endpoint is restricted or invalid.' );
 
@@ -247,11 +317,6 @@ function aicb_adapter_openai_compat( $endpoint, $key, $model, $system, $question
     if ( ! empty( $key ) ) {
         $headers['Authorization'] = 'Bearer ' . $key;
     }
-
-    $messages = [
-        [ 'role' => 'system', 'content' => $system ],
-        [ 'role' => 'user',   'content' => $question ],
-    ];
 
     $body = [
         'model'      => $model,
@@ -286,16 +351,12 @@ function aicb_adapter_openai_compat( $endpoint, $key, $model, $system, $question
             }
         }
     }
-    if ( ! $has_tool_support && aicb_opt( 'enable_calendar_tools' ) ) {
-        $has_tool_support = true;
-    }
-
     if ( aicb_opt( 'enable_calendar_tools' ) && $has_tool_support ) {
         $body['tools'] = [ aicb_get_calendar_tool_definition_openai() ];
         $body['tool_choice'] = 'auto';
     }
 
-    $response = wp_remote_post( $endpoint, [
+    $response = aicb_remote_post_retry( $endpoint, [
         'timeout' => 30,
         'headers' => $headers,
         'body'    => wp_json_encode( $body ),
@@ -327,7 +388,7 @@ function aicb_adapter_openai_compat( $endpoint, $key, $model, $system, $question
         $body['messages']   = $messages;
         $body['tool_choice'] = 'none'; 
 
-        $response2 = wp_remote_post( $endpoint, [
+        $response2 = aicb_remote_post_retry( $endpoint, [
             'timeout' => 30,
             'headers' => $headers,
             'body'    => wp_json_encode( $body ),
@@ -351,17 +412,42 @@ function aicb_adapter_openai_compat( $endpoint, $key, $model, $system, $question
 
 /**
  * AI Adapter: Google Gemini API (generateContent)
+ *
+ * @param string $key        API key.
+ * @param string $model      Model name.
+ * @param array  $messages   Full messages array (system extracted for system_instruction).
+ * @param int    $max_tokens Max tokens.
+ * @return array|WP_Error
  */
-function aicb_adapter_google( $key, $model, $system, $question, $max_tokens ) {
+function aicb_adapter_google( $key, $model, $messages, $max_tokens ) {
+    $system    = aicb_extract_system_prompt( $messages );
+    $conv_msgs = aicb_filter_conversation_messages( $messages );
+
+    $contents = [];
+    foreach ( $conv_msgs as $msg ) {
+        $role = ( $msg['role'] === 'assistant' ) ? 'model' : 'user';
+        $contents[] = [
+            'role'  => $role,
+            'parts' => [ [ 'text' => $msg['content'] ?? '' ] ],
+        ];
+    }
+    if ( empty( $contents ) ) {
+        $contents[] = [ 'role' => 'user', 'parts' => [ [ 'text' => '' ] ] ];
+    }
+
+    $body = [
+        'contents'         => $contents,
+        'generationConfig' => [ 'maxOutputTokens' => (int) $max_tokens ],
+    ];
+    if ( ! empty( $system ) ) {
+        $body['system_instruction'] = [ 'parts' => [ [ 'text' => $system ] ] ];
+    }
+
     $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode( $model ) . ':generateContent';
-    $response = wp_remote_post( $url, [
+    $response = aicb_remote_post_retry( $url, [
         'timeout' => 30,
         'headers' => [ 'Content-Type' => 'application/json', 'x-goog-api-key' => $key ],
-        'body'    => wp_json_encode( [
-            'system_instruction' => [ 'parts' => [ [ 'text' => $system ] ] ],
-            'contents'           => [ [ 'role' => 'user', 'parts' => [ [ 'text' => $question ] ] ] ],
-            'generationConfig'   => [ 'maxOutputTokens' => (int) $max_tokens ],
-        ] ),
+        'body'    => wp_json_encode( $body ),
     ] );
     if ( is_wp_error( $response ) ) return $response;
     $code = wp_remote_retrieve_response_code( $response );
