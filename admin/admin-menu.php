@@ -98,7 +98,7 @@ function aicb_admin_enqueue_scripts( $hook_suffix ) {
     if ( strpos( $hook_suffix, 'ai-chatbot-calendar' ) !== false ) {
         wp_enqueue_script( 'jquery-ui-datepicker' );
         wp_enqueue_script( 'jquery-ui-autocomplete' ); 
-        wp_enqueue_style( 'jquery-ui-style', 'https://code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css', [], '1.12.1' );
+        wp_enqueue_style( 'jquery-ui-style', AICB_URL . 'assets/jquery-ui.css', [], '1.12.1' );
     }
 }
 
@@ -121,7 +121,9 @@ function aicb_admin_calendar_js() {
             $('.aicb-datepicker').datepicker({ 
                 dateFormat: 'mm/dd/yy', 
                 changeMonth: true, 
-                changeYear: true 
+                changeYear: true,
+                prevText: '«',
+                nextText: '»'
             });
             
             var countries = <?php echo wp_json_encode( $autocomplete_data ); ?>;
@@ -691,7 +693,7 @@ function aicb_page_logs() {
     $conv_total = (int) $wpdb->get_var( "SELECT COUNT(DISTINCT session_id) FROM {$lt}" );
 
     // Get paginated sessions via subquery grouping
-    $conversations = $wpdb->get_results(
+    $conversations = $wpdb->get_results( $wpdb->prepare(
         "SELECT session_id, started, ended, msg_count, first_question, provider FROM (
             SELECT session_id,
                    MIN(created_at) as started,
@@ -702,9 +704,11 @@ function aicb_page_logs() {
             FROM {$lt} sessions
             GROUP BY session_id
             ORDER BY ended DESC
-            LIMIT {$conv_per} OFFSET {$conv_off}
-        ) grouped"
-    );
+            LIMIT %d OFFSET %d
+        ) grouped",
+        $conv_per,
+        $conv_off
+    ) );
     $conv_pages = ceil( $conv_total / $conv_per );
 
     include AICB_DIR . 'admin/views/logs.php';

@@ -2,11 +2,32 @@
 
 A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supports native function calling, dynamic multi-provider LLM adapters, a searchable global holiday seeder, and advanced prompt engineering controls.
 
-[![Version](https://img.shields.io/badge/version-2.4.0-blue.svg)](#)
+[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)](#)
 [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](#)
 [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](#)
 [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](#)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
+
+---
+
+## Important Disclosures & Privacy Notice
+
+To deliver advanced context-aware assistance and dynamically fetched calendar parameters, this plugin interfaces with the following external services. All data transmitted is limited strictly to the resources required to process requests.
+
+### 1. Global Public Holidays Lookup (Nager.Date API)
+* **Service Provider**: Nager.Date API (`https://date.nager.at`)
+* **Usage**: When a site administrator uses the "Seed Global Country Holidays" configuration page to seed special opening hours, the plugin queries this API for public holidays based on the country selected. 
+* **Data Transmitted**: No personal, administrative, or visitor data is transmitted. Only the target year and country code are sent.
+* **Terms of Use**: [Nager.Date Project Information](https://date.nager.at)
+
+### 2. Large Language Model (LLM) Processing
+Depending on your chosen configuration in the settings panel, this plugin forwards chat prompts to the specified third-party API endpoint to generate conversational answers. No other site files or databases are shared.
+
+* **Anthropic API** (`https://api.anthropic.com`): [Anthropic Privacy Policy](https://www.anthropic.com/legal/privacy)
+* **Google Gemini API** (`https://generativelanguage.googleapis.com`): [Google Privacy Policy](https://policies.google.com/privacy)
+* **Groq API** (`https://api.groq.com`): [Groq Privacy Policy](https://groq.com/privacy/)
+* **Cerebras API** (`https://api.cerebras.ai`): [Cerebras Privacy Policy](https://www.cerebras.net/privacy-policy/)
+* **Mistral API** (`https://api.mistral.ai`): [Mistral Privacy Policy](https://mistral.ai/privacy/)
 
 ---
 
