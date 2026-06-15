@@ -182,15 +182,6 @@ function aicb_get_calendar_tool_definition_anthropic() {
 }
 
 /**
- * Temporary diagnostic logger. Writes to ai-chatbot-debug.log in the plugin directory.
- */
-function aicb_debug_log( $message ) {
-    $file = AICB_DIR . 'ai-chatbot-debug.log';
-    $line = '[' . wp_date( 'Y-m-d H:i:s' ) . '] ' . $message . "\n";
-    file_put_contents( $file, $line, FILE_APPEND | LOCK_EX );
-}
-
-/**
  * Helper: Extract system prompt string from a messages array.
  * Assumes the first message with role 'system' contains the system prompt content.
  */
@@ -214,27 +205,18 @@ function aicb_filter_conversation_messages( $messages ) {
 
 /**
  * Helper: Execute wp_remote_post with a single retry on transient 502/503 errors.
- * Writes diagnostic info to ai-chatbot-debug.log in the plugin directory.
  */
 function aicb_remote_post_retry( $url, $args, $max_retries = 1 ) {
     $attempt = 0;
     do {
         $response = wp_remote_post( $url, $args );
         if ( is_wp_error( $response ) ) {
-            aicb_debug_log( 'AICB HTTP Error: ' . $response->get_error_message() );
             return $response;
         }
         $code = wp_remote_retrieve_response_code( $response );
         if ( $code !== 502 && $code !== 503 ) {
             return $response;
         }
-        $body = wp_remote_retrieve_body( $response );
-        $msg_count = 0;
-        if ( isset( $args['body'] ) ) {
-            $decoded = json_decode( $args['body'], true );
-            $msg_count = count( $decoded['messages'] ?? [] );
-        }
-        aicb_debug_log( 'AICB API 5xx attempt=' . ( $attempt + 1 ) . ' code=' . $code . ' messages=' . $msg_count . ' url=' . $url . ' body=' . substr( $body, 0, 300 ) );
         $attempt++;
         if ( $attempt <= $max_retries ) {
             usleep( 500000 );
