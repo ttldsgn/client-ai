@@ -5,9 +5,12 @@ name = "php"
 enabled = true
 
   [analyzers.meta]
-  # This tells the PHP analyzer to ignore specific error codes repository-wide
-  # PHP-E1000 is the code for "Undefined function call" shown in your image_c5841a.jpg
-  ignore_rules = ["PHP-E1000"]
+  # WordPress plugins rely on hundreds of runtime functions and constants that
+  # DeepSource cannot resolve statically. These are all false positives.
+  # PHP-E1000 = "undefined function" (e.g. sanitize_text_field, wp_die, add_action)
+  # PHP-W1038 = "undefined constant" (e.g. AICB_DIR, AICB_MODEL_TABLE)
+  # PHP-R1006 = cyclomatic complexity (code style metric, not bugs)
+  ignore_rules = ["PHP-E1000", "PHP-W1038", "PHP-R1006"]
 
 [[analyzers]]
 name = "javascript"
