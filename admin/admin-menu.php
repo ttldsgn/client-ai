@@ -272,12 +272,21 @@ function aicb_meta_box_callback( $post ) {
 
 add_action( 'save_post', 'aicb_save_meta_box' );
 function aicb_save_meta_box( $post_id ) {
-    if ( ! isset( $_POST['aicb_meta_box_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_meta_box_save' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_post', $post_id ) ) return;
-    delete_post_meta( $post_id, '_aicb_page_digest' );
-    delete_post_meta( $post_id, '_aicb_digest_timestamp' );
-    update_post_meta( $post_id, '_aicb_include_kb', isset( $_POST['aicb_include_kb'] ) ? '1' : '0' );
+
+    // Page Builder & Core Save: Delete cache unconditionally for allowed post types
+    $post_type = get_post_type( $post_id );
+    $allowed_types = (array) aicb_opt( 'indexed_post_types' );
+    if ( in_array( $post_type, $allowed_types, true ) ) {
+        delete_post_meta( $post_id, '_aicb_page_digest' );
+        delete_post_meta( $post_id, '_aicb_digest_timestamp' );
+    }
+
+    // Standard metabox option update: Nonce is only verified when updating options via standard edit interface
+    if ( isset( $_POST['aicb_meta_box_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_meta_box_save' ) ) {
+        update_post_meta( $post_id, '_aicb_include_kb', isset( $_POST['aicb_include_kb'] ) ? '1' : '0' );
+    }
 }
 
 /* =========================================================
