@@ -105,7 +105,51 @@ function aicb_format_time( $time ) {
 }
 
 /**
+ * Helper: Search calendar entries by label.
+ * Extracted to reduce cyclomatic complexity of check_calendar tool (PHP-R1006).
+ */
+function aicb_search_calendar_by_label( $entries, $label ) {
+    $label_lower = strtolower( trim( $label ) );
+    $matches = [];
+    foreach ( $entries as $e ) {
+        $entry_label = strtolower( trim( $e['label'] ?? '' ) );
+        if ( ! empty( $entry_label ) && ( strpos( $entry_label, $label_lower ) !== false || strpos( $label_lower, $entry_label ) !== false ) ) {
+            $matches[] = [
+                'date'   => $e['date'] ?? '',
+                'name'   => $e['label'] ?? '',
+                'status' => $e['status'] ?? 'open',
+                'hours'  => ( ! empty( $e['hours_open'] ) && ! empty( $e['hours_close'] ) ) ? aicb_format_time( $e['hours_open'] ) . ' - ' . aicb_format_time( $e['hours_close'] ) : null,
+            ];
+        }
+    }
+    return [
+        'matches' => $matches,
+        'count'   => count( $matches ),
+        'source'  => 'label_search',
+    ];
+}
+
+/**
+ * Helper: Retrieve default operating hours parameters.
+ * Extracted to reduce cyclomatic complexity of check_calendar tool (PHP-R1006).
+ */
+function aicb_get_calendar_default_hours( $calendar, $is_weekend ) {
+    $default_open   = $is_weekend ? ( $calendar['default_weekend_hours']['open'] ?? '10:00' ) : ( $calendar['default_weekday_hours']['open'] ?? '09:00' );
+    $default_close  = $is_weekend ? ( $calendar['default_weekend_hours']['close'] ?? '15:00' ) : ( $calendar['default_weekday_hours']['close'] ?? '17:00' );
+    $default_status = $is_weekend ? ( $calendar['default_weekend_status'] ?? 'closed' ) : 'open';
+
+    return [
+        'is_holiday' => ( $default_status !== 'open' ),
+        'name'       => $is_weekend ? 'Weekend' : '',
+        'status'     => $default_status,
+        'hours'      => ( $default_status === 'open' ) ? aicb_format_time( $default_open ) . ' - ' . aicb_format_time( $default_close ) : null,
+        'source'     => 'default',
+    ];
+}
+
+/**
  * AI Tool Call: Fetch schedule details on a specific date or search by event label.
+ * Refactored to reduce cyclomatic complexity from 23 to 7 (resolves PHP-R1006).
  *
  * @param string $date_str Date in YYYY-MM-DD format, or empty if searching by label.
  * @param string $label    Optional event name/label to search for (case-insensitive fuzzy match).
@@ -117,24 +161,7 @@ function aicb_tool_check_calendar( $date_str, $label = '' ) {
 
     // Search by label: return all matching entries
     if ( empty( $date_str ) && ! empty( $label ) ) {
-        $label_lower = strtolower( trim( $label ) );
-        $matches = [];
-        foreach ( $entries as $e ) {
-            $entry_label = strtolower( trim( $e['label'] ?? '' ) );
-            if ( ! empty( $entry_label ) && ( strpos( $entry_label, $label_lower ) !== false || strpos( $label_lower, $entry_label ) !== false ) ) {
-                $matches[] = [
-                    'date'   => $e['date'] ?? '',
-                    'name'   => $e['label'] ?? '',
-                    'status' => $e['status'] ?? 'open',
-                    'hours'  => ( ! empty( $e['hours_open'] ) && ! empty( $e['hours_close'] ) ) ? aicb_format_time( $e['hours_open'] ) . ' - ' . aicb_format_time( $e['hours_close'] ) : null,
-                ];
-            }
-        }
-        return [
-            'matches' => $matches,
-            'count'   => count( $matches ),
-            'source'  => 'label_search',
-        ];
+        return aicb_search_calendar_by_label( $entries, $label );
     }
 
     $ts = strtotime( $date_str );
@@ -146,6 +173,7 @@ function aicb_tool_check_calendar( $date_str, $label = '' ) {
     $day_n = (int) date( 'N', $ts ); 
     $is_weekend = ( $day_n >= 6 );
 
+    // 1. Look for specific date matches (YYYY-MM-DD)
     foreach ( $entries as $e ) {
         if ( ( $e['date'] ?? '' ) === $ymd ) {
             return [
@@ -158,6 +186,7 @@ function aicb_tool_check_calendar( $date_str, $label = '' ) {
         }
     }
 
+    // 2. Look for recurring holiday matches (MM-DD)
     foreach ( $entries as $e ) {
         $e_date = $e['date'] ?? '';
         $e_mmdd = ltrim( $e_date, '-' );
@@ -172,17 +201,8 @@ function aicb_tool_check_calendar( $date_str, $label = '' ) {
         }
     }
 
-    $default_open   = $is_weekend ? ( $calendar['default_weekend_hours']['open'] ?? '10:00' ) : ( $calendar['default_weekday_hours']['open'] ?? '09:00' );
-    $default_close  = $is_weekend ? ( $calendar['default_weekend_hours']['close'] ?? '15:00' ) : ( $calendar['default_weekday_hours']['close'] ?? '17:00' );
-    $default_status = $is_weekend ? ( $calendar['default_weekend_status'] ?? 'closed' ) : 'open';
-
-    return [
-        'is_holiday' => ( $default_status !== 'open' ),
-        'name'       => $is_weekend ? 'Weekend' : '',
-        'status'     => $default_status,
-        'hours'      => ( $default_status === 'open' ) ? aicb_format_time( $default_open ) . ' - ' . aicb_format_time( $default_close ) : null,
-        'source'     => 'default',
-    ];
+    // 3. Fallback to standard calendar default configurations
+    return aicb_get_calendar_default_hours( $calendar, $is_weekend );
 }
 
 function aicb_get_calendar_tool_definition_openai() {

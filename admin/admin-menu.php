@@ -497,6 +497,7 @@ function aicb_page_qa() {
         if ( $action === 'add' ) {
             $wpdb->insert( $table, [
                 'question' => sanitize_textarea_field( wp_unslash( $_POST['question'] ?? '' ) ),
+                'answer'   => sanitize_textarea_field( wp_unslash( $_POST['answer'] ?? '' ) ),
                 'active'   => 1,
             ], [ '%s', '%s', '%d' ] );
         } elseif ( $action === 'update' && isset( $_POST['qa_id'] ) ) {
