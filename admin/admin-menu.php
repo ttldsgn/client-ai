@@ -195,14 +195,6 @@ function aicb_sanitize_specific_option( $val, $field ) {
         return $sanitized;
     }
 
-    if ( $field === 'custom_endpoint' ) {
-        $val = esc_url_raw( trim( $val ) );
-        if ( ! empty( $val ) && ! aicb_is_valid_endpoint( $val ) ) {
-            add_settings_error( 'aicb_options', 'unsafe_endpoint', 'Warning: The Custom Endpoint URL failed safety checks.', 'error' );
-        }
-        return $val;
-    }
-
     if ( in_array( $field, [ 'handover_apology', 'handover_prompt', 'handover_btn_text', 'contact_btn_text', 'handover_primary_text', 'handover_secondary_bg', 'handover_secondary_text' ], true ) ) {
         return sanitize_text_field( $val );
     }
@@ -261,7 +253,7 @@ function aicb_add_meta_box() {
 }
 
 function aicb_meta_box_callback( $post ) {
-    wp_nonce_field( 'aicb_meta_box_save', 'aicb_meta_box_nonce' );
+    wp_nonce_field( 'aicb_page_settings', 'aicb_meta_box_nonce' );
     $val  = get_post_meta( $post->ID, '_aicb_include_kb', true );
     $mode = aicb_opt( 'indexing_mode' );
     $checked = ( $mode === 'opt-in' ) ? ( '1' === $val ) : ( '0' !== $val );
@@ -284,7 +276,7 @@ function aicb_save_meta_box( $post_id ) {
     }
 
     // Standard metabox option update: Nonce is only verified when updating options via standard edit interface
-    if ( isset( $_POST['aicb_meta_box_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_meta_box_save' ) ) {
+    if ( isset( $_POST['aicb_meta_box_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_meta_box_nonce'] ) ), 'aicb_page_settings' ) ) {
         update_post_meta( $post_id, '_aicb_include_kb', isset( $_POST['aicb_include_kb'] ) ? '1' : '0' );
     }
 }
@@ -548,8 +540,23 @@ function aicb_page_models() {
             $supports_tools = isset( $_POST['supports_tools'] ) ? 1 : 0;
             $is_custom     = 1;
 
+            // Retrieve and sanitize custom endpoint/key inputs
+            $api_endpoint  = esc_url_raw( trim( $_POST['api_endpoint'] ?? '' ) );
+            $raw_api_key   = sanitize_text_field( trim( $_POST['api_key'] ?? '' ) );
+            $encrypted_key = '';
+
+            if ( ! empty( $raw_api_key ) && $raw_api_key !== 'XXXXXXXXXXXXXXXX' ) {
+                if ( aicb_has_secure_salts() ) {
+                    $encrypted_key = aicb_encrypt( $raw_api_key );
+                } else {
+                    echo '<div class="notice notice-error"><p>Error: Insecure security salts detected. Custom API Key could not be encrypted.</p></div>';
+                }
+            }
+
             if ( empty( $provider_id ) || empty( $model_id ) || empty( $name ) ) {
                 echo '<div class="notice notice-error"><p>Provider ID, Model ID, and Name are required.</p></div>';
+            } elseif ( ! empty( $api_endpoint ) && ! aicb_is_valid_endpoint( $api_endpoint ) ) {
+                echo '<div class="notice notice-error"><p>Error: The custom endpoint Base URL failed safety checks.</p></div>';
             } elseif ( $action === 'add' ) {
                 $exists = $wpdb->get_var( $wpdb->prepare(
                     "SELECT COUNT(*) FROM {$table} WHERE provider_id = %s AND model_id = %s",
@@ -571,15 +578,18 @@ function aicb_page_models() {
                         'context_k'      => $context_k,
                         'recommended'    => $recommended,
                         'supports_tools' => $supports_tools,
+                        'api_key'        => $encrypted_key,
+                        'api_endpoint'   => $api_endpoint,
                         'is_custom'      => $is_custom,
                         'active'         => 1,
                         'sort_order'     => $max_sort + 1,
-                    ], [ '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d', '%d', '%d' ] );
+                    ], [ '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d' ] );
                     echo '<div class="notice notice-success"><p>Custom model added successfully.</p></div>';
                 }
             } elseif ( $action === 'update' && isset( $_POST['model_db_id'] ) ) {
                 $db_id = (int) $_POST['model_db_id'];
-                $wpdb->update( $table, [
+                
+                $update_fields = [
                     'provider_name'  => $provider_name,
                     'model_id'       => $model_id,
                     'name'           => $name,
@@ -587,7 +597,19 @@ function aicb_page_models() {
                     'context_k'      => $context_k,
                     'recommended'    => $recommended,
                     'supports_tools' => $supports_tools,
-                ], [ 'id' => $db_id ], [ '%s', '%s', '%s', '%s', '%d', '%d', '%d' ], [ '%d' ] );
+                    'api_endpoint'   => $api_endpoint,
+                ];
+                $update_formats = [ '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s' ];
+
+                if ( $raw_api_key === '' ) {
+                    $update_fields['api_key'] = '';
+                    $update_formats[] = '%s';
+                } elseif ( $raw_api_key !== 'XXXXXXXXXXXXXXXX' ) {
+                    $update_fields['api_key'] = $encrypted_key;
+                    $update_formats[] = '%s';
+                }
+
+                $wpdb->update( $table, $update_fields, [ 'id' => $db_id ], $update_formats, [ '%d' ] );
                 echo '<div class="notice notice-success"><p>Model updated successfully.</p></div>';
             }
         } elseif ( $action === 'delete' && isset( $_POST['model_db_id'] ) ) {

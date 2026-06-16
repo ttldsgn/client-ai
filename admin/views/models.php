@@ -3,7 +3,7 @@
  * Admin view: AI Chatbot Models management page.
  *
  * @package ClientAI
- * @version 2.4.0
+ * @version 2.5.0
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -75,6 +75,26 @@ defined( 'ABSPATH' ) || exit;
                                 <input type="checkbox" name="supports_tools" value="1" <?php checked( $edit_row->supports_tools, 1 ); ?> />
                                 <?php esc_html_e( 'Supports Tools (Function Calling)', 'ai-chatbot' ); ?>
                             </label>
+                        </td>
+                    </tr>
+
+                    <!-- Model-Specific Base URL & API Key configuration row (Decrypted on-demand for Custom Models) -->
+                    <?php 
+                    $show_custom_fields = ( $edit_row->provider_id === 'custom' ) ? '' : 'style="display:none;"';
+                    $has_custom_key = ! empty( $edit_row->api_key ) ? 'XXXXXXXXXXXXXXXX' : '';
+                    ?>
+                    <tr class="aicb-custom-provider-only" <?php echo $show_custom_fields; ?>>
+                        <th scope="row"><label for="api_endpoint"><?php esc_html_e( 'Base URL Endpoint', 'ai-chatbot' ); ?></label></th>
+                        <td>
+                            <input type="url" id="api_endpoint" name="api_endpoint" value="<?php echo esc_url( $edit_row->api_endpoint ?? '' ); ?>" class="regular-text" placeholder="https://openrouter.ai/api/v1/chat/completions" />
+                            <p class="description"><?php esc_html_e( 'The OpenAI-compatible Base URL for this custom model (e.g. https://openrouter.ai/api/v1/chat/completions). Leave blank to fall back to global Custom Endpoint.', 'ai-chatbot' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr class="aicb-custom-provider-only" <?php echo $show_custom_fields; ?>>
+                        <th scope="row"><label for="api_key"><?php esc_html_e( 'Custom API Key', 'ai-chatbot' ); ?></label></th>
+                        <td>
+                            <input type="password" id="api_key" name="api_key" value="<?php echo esc_attr( $has_custom_key ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'Enter custom API key if required', 'ai-chatbot' ); ?>" />
+                            <p class="description"><?php esc_html_e( 'API key for this specific custom model. Encrypted securely in the database via AES-256-GCM. Leave blank to fall back to global Custom API Key.', 'ai-chatbot' ); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -151,6 +171,22 @@ defined( 'ABSPATH' ) || exit;
                                 <input type="checkbox" name="supports_tools" value="1" checked />
                                 <?php esc_html_e( 'Supports Tools (Function Calling)', 'ai-chatbot' ); ?>
                             </label>
+                        </td>
+                    </tr>
+
+                    <!-- Model-Specific Base URL & API Key configuration row (Decrypted on-demand for Custom Models) -->
+                    <tr class="aicb-custom-provider-only" style="display:none;">
+                        <th scope="row"><label for="api_endpoint"><?php esc_html_e( 'Base URL Endpoint', 'ai-chatbot' ); ?></label></th>
+                        <td>
+                            <input type="url" id="api_endpoint" name="api_endpoint" value="" class="regular-text" placeholder="https://openrouter.ai/api/v1/chat/completions" />
+                            <p class="description"><?php esc_html_e( 'The OpenAI-compatible Base URL for this custom model (e.g. https://openrouter.ai/api/v1/chat/completions). Leave blank to fall back to global Custom Endpoint.', 'ai-chatbot' ); ?></p>
+                        </td>
+                    </tr>
+                    <tr class="aicb-custom-provider-only" style="display:none;">
+                        <th scope="row"><label for="api_key"><?php esc_html_e( 'Custom API Key', 'ai-chatbot' ); ?></label></th>
+                        <td>
+                            <input type="password" id="api_key" name="api_key" value="" class="regular-text" placeholder="<?php esc_attr_e( 'Enter custom API key if required', 'ai-chatbot' ); ?>" />
+                            <p class="description"><?php esc_html_e( 'API key for this specific custom model. Encrypted securely in the database via AES-256-GCM. Leave blank to fall back to global Custom API Key.', 'ai-chatbot' ); ?></p>
                         </td>
                     </tr>
                 </table>
@@ -279,3 +315,22 @@ defined( 'ABSPATH' ) || exit;
         <?php esc_html_e( 'on plugin activation. Editing the JSON file directly no longer has any effect after activation.', 'ai-chatbot' ); ?>
     </p>
 </div>
+
+<script>
+jQuery(document).ready(function($) {
+    function toggleCustomProviderFields() {
+        var selectedProvider = $('#provider_id').val();
+        if (selectedProvider === 'custom') {
+            $('.aicb-custom-provider-only').slideDown(200);
+        } else {
+            $('.aicb-custom-provider-only').slideUp(200);
+            // Reset input values when closing to avoid accidental submissions
+            $('.aicb-custom-provider-only input').val('');
+        }
+    }
+    $('#provider_id').on('change', toggleCustomProviderFields);
+    if ($('#provider_id').length) {
+        toggleCustomProviderFields();
+    }
+});
+</script>

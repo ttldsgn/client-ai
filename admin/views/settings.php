@@ -26,7 +26,10 @@
 
             <table class="form-table" style="margin-top:0">
                 <?php foreach ( $providers as $pid => $pdata ) :
-                    $is_custom = ( $pid === 'custom' );
+                    // Skip the custom key-row entirely since keys and endpoints are now managed in AI Models page
+                    if ( $pid === 'custom' ) {
+                        continue;
+                    }
                     $active    = ( $pid === $cur_provider ) ? ' active' : '';
 
                     $has_const = defined( 'AICB_KEY_' . strtoupper( $pid ) );
@@ -39,28 +42,13 @@
                         $display_val = ! empty( $stored_key ) ? 'XXXXXXXXXXXXXXXX' : '';
                     }
 
-                    $placeholder = $has_const ? 'Configured by wp-config constants' : ( $pid === 'custom' ? 'Leave blank if not required' : 'sk-…' );
+                    $placeholder = $has_const ? 'Configured by wp-config constants' : 'sk-…';
                     ?>
                     <tr class="aicb-key-row<?= $active ?>" id="aicb-keyrow-<?= esc_attr( $pid ) ?>">
                         <th style="width:200px">
                             <label for="aicb_key_<?= esc_attr( $pid ) ?>"><?= esc_html( $pdata['key_label'] ) ?></label>
                         </th>
                         <td>
-                            <?php if ( $pid === 'custom' ) : ?>
-                                <p style="margin:0 0 6px"><strong>Custom / OpenAI-compatible endpoint</strong></p>
-                                <label style="display:block;margin-bottom:6px">
-                                    Endpoint URL<br>
-                                    <input type="url" name="aicb_custom_endpoint"
-                                    value="<?= esc_attr( aicb_opt('custom_endpoint') ) ?>"
-                                    class="regular-text" placeholder="http://localhost:11434/v1/chat/completions" />
-                                </label>
-                                <label style="display:block;margin-bottom:6px">
-                                    Model ID<br>
-                                    <input type="text" name="aicb_custom_model_id"
-                                    value="<?= esc_attr( aicb_opt('custom_model_id') ) ?>"
-                                    class="regular-text" placeholder="e.g. llama3, mistral, phi3" />
-                                </label>
-                            <?php endif; ?>
                             <input type="password" id="aicb_key_<?= esc_attr( $pid ) ?>"
                             name="aicb_key_<?= esc_attr( $pid ) ?>"
                             value="<?= esc_attr( $display_val ) ?>"
@@ -545,11 +533,10 @@
         var keyRow = document.getElementById('aicb-keyrow-' + providerId);
         if (keyRow) keyRow.classList.add('active');
         modelSel.innerHTML = '';
-        if (providerId === 'custom') {
-            modelSel.parentElement.style.display = 'none';
-            return;
-        }
+        
+        // Retain and display Model Dropdown always, allowing custom model selects
         modelSel.parentElement.style.display = '';
+        
         (p.models || []).forEach(function(m) {
             var opt = document.createElement('option');
             opt.value = m.id;

@@ -9,8 +9,6 @@ function aicb_default_options() {
         // Provider & model
         'provider'              => 'anthropic',
         'model'                 => 'claude-sonnet-4-20250514',
-        'custom_model_id'       => '',       
-        'custom_endpoint'       => '',       
         // Display
         'position'              => 'right',
         'primary_color'         => '#2563eb',

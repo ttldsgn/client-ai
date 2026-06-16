@@ -24,7 +24,7 @@ function aicb_get_catalog() {
     }
 
     $rows = $wpdb->get_results(
-        "SELECT provider_id, provider_name, model_id, name, description, context_k, recommended, supports_tools
+        "SELECT provider_id, provider_name, model_id, name, description, context_k, recommended, supports_tools, api_key, api_endpoint
          FROM {$table}
          WHERE active = 1
          ORDER BY sort_order ASC, id ASC"
@@ -65,6 +65,8 @@ function aicb_get_catalog() {
             'context_k'      => (int) $row->context_k,
             'recommended'    => ! empty( $row->recommended ),
             'supports_tools' => ! empty( $row->supports_tools ),
+            'api_endpoint'   => $row->api_endpoint,
+            'api_key'        => $row->api_key,
         ];
     }
 
@@ -304,10 +306,37 @@ function aicb_remote_post_retry( $url, $args, $max_retries = 1 ) {
  * @return array|WP_Error
  */
 function aicb_call_ai( $provider, $model, $messages, $max_tokens ) {
-    $key = aicb_get_key( $provider );
+    $key      = aicb_get_key( $provider );
+    $endpoint = '';
+
+    // Route Custom Provider Overrides directly
     if ( $provider === 'custom' ) {
-        return aicb_adapter_openai_compat( aicb_opt( 'custom_endpoint' ), $key, aicb_opt( 'custom_model_id' ) ?: $model, $messages, $max_tokens );
+        global $wpdb;
+        $table = $wpdb->prefix . AICB_MODEL_TABLE;
+        $table_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) );
+        if ( $table_exists ) {
+            $custom_row = $wpdb->get_row( $wpdb->prepare(
+                "SELECT api_key, api_endpoint FROM {$table} WHERE provider_id = 'custom' AND model_id = %s AND active = 1 LIMIT 1",
+                $model
+            ) );
+            if ( $custom_row ) {
+                if ( ! empty( $custom_row->api_endpoint ) ) {
+                    $endpoint = esc_url_raw( $custom_row->api_endpoint );
+                }
+                if ( ! empty( $custom_row->api_key ) ) {
+                    $key = aicb_decrypt( $custom_row->api_key );
+                }
+            }
+        }
+
+        // Custom models require a valid endpoint configured on the AI Models page
+        if ( empty( $endpoint ) ) {
+            return new WP_Error( 'no_endpoint', 'No Base URL Endpoint configured for this custom model. Please configure it in AI Chatbot > Models.' );
+        }
+
+        return aicb_adapter_openai_compat( $endpoint, $key, $model, $messages, $max_tokens );
     }
+
     if ( empty( $key ) ) {
         return new WP_Error( 'no_key', 'No API key configured for this provider.' );
     }

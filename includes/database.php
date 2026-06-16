@@ -80,6 +80,8 @@ function aicb_maybe_create_models_table() {
         context_k       INT UNSIGNED    DEFAULT 0,
         recommended     TINYINT(1)      DEFAULT 0,
         supports_tools  TINYINT(1)      DEFAULT 1,
+        api_key         TEXT,
+        api_endpoint    TEXT,
         is_custom       TINYINT(1)      DEFAULT 0,
         active          TINYINT(1)      DEFAULT 1,
         sort_order      INT             DEFAULT 0,
@@ -143,6 +145,22 @@ function aicb_seed_models_table() {
  * Uses a version option to run only once per plugin version.
  */
 function aicb_models_migration_check() {
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_MODEL_TABLE;
+
+    // Direct SQL patching to make sure columns exist instantly on update
+    $table_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) );
+    if ( $table_exists ) {
+        $has_key = $wpdb->get_results( "SHOW COLUMNS FROM {$table} LIKE 'api_key'" );
+        if ( empty( $has_key ) ) {
+            $wpdb->query( "ALTER TABLE {$table} ADD COLUMN api_key TEXT AFTER supports_tools" );
+        }
+        $has_endpoint = $wpdb->get_results( "SHOW COLUMNS FROM {$table} LIKE 'api_endpoint'" );
+        if ( empty( $has_endpoint ) ) {
+            $wpdb->query( "ALTER TABLE {$table} ADD COLUMN api_endpoint TEXT AFTER api_key" );
+        }
+    }
+
     if ( get_option( 'aicb_models_table_version' ) === AICB_VERSION ) return;
     aicb_maybe_create_models_table();
     update_option( 'aicb_models_table_version', AICB_VERSION );
