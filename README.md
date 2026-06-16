@@ -122,6 +122,18 @@ By expanding the 'Advanced Prompt Engineering' panel on the settings page, devel
 
 If a developer's customizations cause unwanted behavior or system drift, clicking the Reset Engineering Templates button will securely purge custom overrides and restore the factory prompt schemas.
 
+## Future Roadmap
+
+I am working to expand the capabilities of this plugin. Upcoming development priorities, without promises, include:
+
+### Live Discord Integration (Hybrid Support)
+Introduce a seamless transition from AI-driven conversations to live human support via Discord. 
+* **How it will work:** When a user requests to speak with a live person, a bridge will be established directly between the chat interface and your Discord server using the Discord API.
+* **The Experience:** Support agents can respond straight from Discord channels, while the website visitor enjoys a real-time, continuous live chat experience without ever having to leave the chat window.
+
+### Optional Extensions & Add-ons
+To keep the core plugin lightweight, advanced features—including the live Discord bridge—will be introduced as optional, modular add-on plugins. This ensures you only install and configure the specific integrations your workflow requires.
+
 * * *
 
 ## Open Source &amp; Community License

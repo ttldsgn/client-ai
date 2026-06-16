@@ -17,7 +17,7 @@
             <h2>Tool-Calling Status</h2>
             <label>
                 <input type="checkbox" name="enable_calendar_tools" value="1" <?= checked( $enable_tools, 1 ) ?> />
-                Enable <code>check_calendar</code> tool for the AI chatbot
+                Enable <code>check_calendar</code> tool for Client AI
             </label>
             <p class="description">When enabled, the LLM will call the calendar tool instead of reasoning about dates itself.</p>
             <?php submit_button( 'Save Tool Status', 'primary', 'submit', false ); ?>
@@ -230,7 +230,7 @@
         <form method="post" onsubmit="return confirm('Add country holidays to the calendar for the specified year range? Existing entries will not be duplicated.');">
             <?php wp_nonce_field( 'aicb_cal_action', 'aicb_cal_nonce' ); ?>
             <input type="hidden" name="aicb_action" value="seed_holidays" />
-            <p class="description">Fetches country-specific public holidays from the <a href="https://date.nager.at" target="_blank">Nager.Date API</a>. Holidays are stored as exact dates.</p>
+            <p class="description">Fetches country-specific public holidays from the <a href="https://date.nager.at" target="_blank" rel="noopener noreferrer">Nager.Date API</a>. Holidays are stored as exact dates.</p>
             
             <table class="form-table">
                 <tr>
