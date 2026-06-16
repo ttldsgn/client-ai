@@ -1,6 +1,6 @@
 <?php defined( 'ABSPATH' ) || exit; ?>
 <div class="wrap aicb-wrap">
-    <h1>AI Chatbot — Calendar & Hours</h1>
+    <h1>Client AI — Calendar & Hours</h1>
     <p class="description">Configure business hours and special dates. The chatbot will use the <code>check_calendar</code> tool to answer opening-hours questions deterministically.</p>
 
     <!-- Hidden form for row-level actions to avoid nested forms -->

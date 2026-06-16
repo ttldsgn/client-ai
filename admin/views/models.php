@@ -9,7 +9,7 @@
 defined( 'ABSPATH' ) || exit;
 ?>
 <div class="wrap aicb-wrap">
-    <h1><?php esc_html_e( 'AI Models', 'ai-chatbot' ); ?></h1>
+    <h1><?php esc_html_e( 'Client AI — AI Models', 'ai-chatbot' ); ?></h1>
     <p><?php esc_html_e( 'Manage the AI models available for each provider. Built-in models are seeded from the plugin and cannot be deleted. Add custom models for any provider, or reset a provider to its default models.', 'ai-chatbot' ); ?></p>
 
     <hr />

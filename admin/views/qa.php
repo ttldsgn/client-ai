@@ -1,6 +1,6 @@
 <?php defined( 'ABSPATH' ) || exit; ?>
 <div class="wrap aicb-wrap">
-    <h1>AI Chatbot — Custom Q&A</h1>
+    <h1>Client AI — Custom Q&A</h1>
     <div class="aicb-section">
         <h2><?= $edit_row ? 'Edit Entry' : 'Add Entry' ?></h2>
         <form method="post">

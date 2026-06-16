@@ -37,7 +37,7 @@
         </div>
     <?php else : ?>
         <!-- List View -->
-        <h1>AI Chatbot — Chat Logs
+        <h1>Client AI — Chat Logs
             <form method="post" style="display:inline;float:right" onsubmit="return confirm('Clear ALL chat logs and conversation data? This cannot be undone.')">
                 <?php wp_nonce_field( 'aicb_clear_logs', 'aicb_clear_nonce' ); ?>
                 <button class="button button-link-delete">Clear All Data</button>

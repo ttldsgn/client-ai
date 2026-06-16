@@ -1,6 +1,6 @@
 <?php defined( 'ABSPATH' ) || exit; ?>
 <div class="wrap aicb-wrap">
-    <h1>AI Chatbot — Settings</h1>
+    <h1>Client AI — Settings</h1>
     
     <?php settings_errors( 'aicb_options' ); ?>
 

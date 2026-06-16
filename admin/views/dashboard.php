@@ -1,6 +1,6 @@
 <?php defined( 'ABSPATH' ) || exit; ?>
 <div class="wrap aicb-wrap">
-    <h1>AI Chatbot — Dashboard</h1>
+    <h1>Client AI — Dashboard</h1>
     
     <div class="aicb-cards">
         <div class="aicb-card"><div class="num"><?= $total ?></div><div class="lbl">Total Conversations</div></div>

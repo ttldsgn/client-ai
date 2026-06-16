@@ -3,7 +3,7 @@ defined( 'ABSPATH' ) || exit;
 
 add_action( 'admin_menu', 'aicb_admin_menu' );
 function aicb_admin_menu() {
-    add_menu_page( 'AI Chatbot', 'AI Chatbot', 'manage_options', 'ai-chatbot', 'aicb_page_dashboard', 'dashicons-format-chat', 80 );
+    add_menu_page( 'Client AI', 'Client AI', 'manage_options', 'ai-chatbot', 'aicb_page_dashboard', 'dashicons-format-chat', 80 );
     add_submenu_page( 'ai-chatbot', 'Dashboard',  'Dashboard',  'manage_options', 'ai-chatbot',             'aicb_page_dashboard' );
     add_submenu_page( 'ai-chatbot', 'Settings',   'Settings',   'manage_options', 'ai-chatbot-settings',    'aicb_page_settings'  );
     add_submenu_page( 'ai-chatbot', 'Calendar',   'Calendar',   'manage_options', 'ai-chatbot-calendar',    'aicb_page_calendar'  );
