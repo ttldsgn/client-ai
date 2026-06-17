@@ -309,23 +309,23 @@ function aicb_handle_import_settings() {
     if ( isset( $import_data['general'] ) && is_array( $import_data['general'] ) ) {
         foreach ( $import_data['general'] as $key => $value ) {
             if ( ! in_array( $key, $general_option_keys, true ) ) continue;
-            update_option( 'aicb_' . $key, aicb_sanitize_specific_option( $value, $key ) );
+            update_option( 'aicb_' . $key, aicb_sanitize_import_option( $value, $key ) );
         }
         $imported[] = 'general settings';
     }
 
-    // Import Calendar & Hours (with sanitization matching aicb_sanitize_specific_option)
+    // Import Calendar & Hours (with import-specific sanitization)
     if ( isset( $import_data['calendar'] ) && is_array( $import_data['calendar'] ) ) {
-        update_option( 'aicb_calendar_data', aicb_sanitize_specific_option( $import_data['calendar'], 'calendar_data' ) );
+        update_option( 'aicb_calendar_data', aicb_sanitize_import_option( $import_data['calendar'], 'calendar_data' ) );
         $imported[] = 'calendar & hours';
     }
 
-    // Import Advanced Prompts (with allowlist validation and sanitization)
+    // Import Advanced Prompts (with allowlist validation and import-specific sanitization)
     $prompt_allowlist = [ 'system_prompt', 'prompt_temporal_pivot', 'prompt_tool_instruction', 'prompt_negative_constraints' ];
     if ( isset( $import_data['prompts'] ) && is_array( $import_data['prompts'] ) ) {
         foreach ( $import_data['prompts'] as $key => $value ) {
             if ( ! in_array( $key, $prompt_allowlist, true ) ) continue;
-            update_option( 'aicb_' . $key, aicb_sanitize_specific_option( $value, $key ) );
+            update_option( 'aicb_' . $key, aicb_sanitize_import_option( $value, $key ) );
         }
         $imported[] = 'advanced prompts';
     }
@@ -384,6 +384,73 @@ function aicb_handle_import_settings() {
     } else {
         add_settings_error( 'aicb_options', 'import_success', 'Import successful: ' . implode( ', ', $imported ) . ' restored.', 'updated' );
     }
+}
+
+/**
+ * Import-specific sanitizer. Unlike aicb_sanitize_specific_option (which
+ * preserves existing data on empty values for form submissions), this function
+ * allows empty/null values to pass through so imports can actually clear fields.
+ * It also enforces scalar types: only indexed_post_types may be an array.
+ */
+function aicb_sanitize_import_option( $val, $field ) {
+    // Preserve null explicitly so import can set fields to empty
+    if ( $val === null ) {
+        return '';
+    }
+
+    // Type enforcement: reject arrays for scalar-only fields
+    $array_allowed = [ 'indexed_post_types', 'calendar_data' ];
+    if ( is_array( $val ) && ! in_array( $field, $array_allowed, true ) ) {
+        return get_option( 'aicb_' . $field, aicb_default_options()[ $field ] ?? '' );
+    }
+
+    // Calendar gets full structural sanitization
+    if ( $field === 'calendar_data' ) {
+        if ( ! is_array( $val ) ) {
+            return aicb_default_options()['calendar_data'];
+        }
+        $sanitized = [];
+        $wd = isset( $val['default_weekday_hours'] ) && is_array( $val['default_weekday_hours'] ) ? $val['default_weekday_hours'] : [];
+        $sanitized['default_weekday_hours'] = [
+            'open'  => sanitize_text_field( $wd['open'] ?? '09:00' ),
+            'close' => sanitize_text_field( $wd['close'] ?? '17:00' ),
+        ];
+        $we = isset( $val['default_weekend_hours'] ) && is_array( $val['default_weekend_hours'] ) ? $val['default_weekend_hours'] : [];
+        $sanitized['default_weekend_hours'] = [
+            'open'  => sanitize_text_field( $we['open'] ?? '10:00' ),
+            'close' => sanitize_text_field( $we['close'] ?? '15:00' ),
+        ];
+        $sanitized['default_weekend_status'] = sanitize_text_field( $val['default_weekend_status'] ?? 'closed' );
+        $entries = isset( $val['entries'] ) && is_array( $val['entries'] ) ? $val['entries'] : [];
+        $sanitized_entries = [];
+        foreach ( $entries as $entry ) {
+            if ( ! is_array( $entry ) ) continue;
+            $sanitized_entries[] = [
+                'date'        => sanitize_text_field( $entry['date'] ?? '' ),
+                'label'       => sanitize_text_field( $entry['label'] ?? '' ),
+                'status'      => sanitize_text_field( $entry['status'] ?? 'open' ),
+                'hours_open'  => sanitize_text_field( $entry['hours_open'] ?? '' ),
+                'hours_close' => sanitize_text_field( $entry['hours_close'] ?? '' ),
+            ];
+        }
+        $sanitized['entries'] = $sanitized_entries;
+        return $sanitized;
+    }
+
+    // Handover/custom button text fields
+    if ( in_array( $field, [ 'handover_apology', 'handover_prompt', 'handover_btn_text', 'contact_btn_text', 'handover_primary_text', 'handover_secondary_bg', 'handover_secondary_text' ], true ) ) {
+        return sanitize_text_field( $val );
+    }
+    if ( in_array( $field, [ 'contact_btn_url', 'handover_target', 'handover_btn_radius' ], true ) ) {
+        return sanitize_text_field( $val );
+    }
+
+    // Arrays (indexed_post_types)
+    if ( is_array( $val ) ) {
+        return array_map( 'sanitize_text_field', $val );
+    }
+
+    return sanitize_textarea_field( $val );
 }
 
 function aicb_sanitize_specific_option( $val, $field ) {
