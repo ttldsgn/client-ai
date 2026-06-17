@@ -6,7 +6,10 @@ enabled = true
 
   [analyzers.meta]
   environment = ["wordpress"]
-  # You can keep complexity or style ignores here if you still want them off:
+  # PHP-R1006: Disables cyclomatic complexity alerts to accommodate legacy WordPress
+  # plugin structures and deeply nested logical hooks.
+  # PHP-T1002: Disables specific style/formatting constraints that conflict with
+  # local development standards or WordPress Core coding style guidelines.
   ignore_rules = ["PHP-R1006", "PHP-T1002"]
 
 [[analyzers]]
