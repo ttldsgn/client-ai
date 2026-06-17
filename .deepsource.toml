@@ -5,12 +5,9 @@ name = "php"
 enabled = true
 
   [analyzers.meta]
-  # WordPress plugins rely on hundreds of runtime functions and constants that
-  # DeepSource cannot resolve statically. These are all false positives.
-  # PHP-E1000 = "undefined function" (e.g. sanitize_text_field, wp_die, add_action)
-  # PHP-W1038 = "undefined constant" (e.g. AICB_DIR, AICB_MODEL_TABLE)
-  # PHP-R1006 = cyclomatic complexity (code style metric, not bugs)
-  ignore_rules = ["PHP-E1000", "PHP-W1038", "PHP-R1006", "PHP-T1002", "PHP-E1002"]
+  environment = ["wordpress"]
+  # You can keep complexity or style ignores here if you still want them off:
+  ignore_rules = ["PHP-R1006", "PHP-T1002"]
 
 [[analyzers]]
 name = "javascript"
