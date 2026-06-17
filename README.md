@@ -2,7 +2,7 @@
 
 A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supports native function calling, dynamic multi-provider LLM adapters, a searchable global holiday seeder, and advanced prompt engineering controls.
 
-[![Version](https://img.shields.io/badge/version-2.5.1-blue.svg)](#) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](#) [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](#) [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](#) [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
+[![Version](https://img.shields.io/badge/version-2.5.1-blue.svg)](https://github.com/ttldsgn/client-ai/releases) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](https://wordpress.org) [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](https://www.php.net/releases/) [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE) [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
 
 * * *
 

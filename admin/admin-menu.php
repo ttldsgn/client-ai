@@ -244,7 +244,7 @@ function aicb_handle_export_settings() {
 
     // No data selected? Show error and bail
     if ( empty( $export['data'] ) ) {
-        add_settings_error( 'aicb_options', 'export_empty', 'Export failed: No sections were selected. Please check at least one checkbox.', 'error' );
+        set_transient( 'aicb_export_error', 'Export failed: No sections were selected. Please check at least one checkbox.', 30 );
         $redirect_url = wp_get_referer() ?: admin_url( 'admin.php?page=ai-chatbot-settings' );
         wp_safe_redirect( $redirect_url );
         exit;
@@ -294,24 +294,38 @@ function aicb_handle_import_settings() {
     $import_data = $data['data'];
     $imported    = [];
 
-    // Import General Settings
+    // Import General Settings (with allowlist validation and sanitization)
+    $general_option_keys = [
+        'provider', 'model', 'position', 'primary_color', 'icon', 'chat_title', 'welcome_msg',
+        'placeholder', 'footer_text', 'max_tokens', 'rate_limit', 'system_prompt', 'enabled',
+        'show_on_all', 'log_retention_days', 'enable_cache', 'cache_duration', 'indexing_mode',
+        'indexed_post_types', 'enable_handover', 'handover_apology', 'handover_prompt',
+        'handover_type', 'handover_target', 'handover_btn_text', 'contact_btn_text',
+        'contact_btn_url', 'handover_primary_text', 'handover_secondary_bg',
+        'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
+        'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
+        'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+    ];
     if ( isset( $import_data['general'] ) && is_array( $import_data['general'] ) ) {
         foreach ( $import_data['general'] as $key => $value ) {
-            update_option( 'aicb_' . $key, $value );
+            if ( ! in_array( $key, $general_option_keys, true ) ) continue;
+            update_option( 'aicb_' . $key, aicb_sanitize_specific_option( $value, $key ) );
         }
         $imported[] = 'general settings';
     }
 
-    // Import Calendar & Hours
+    // Import Calendar & Hours (with sanitization matching aicb_sanitize_specific_option)
     if ( isset( $import_data['calendar'] ) && is_array( $import_data['calendar'] ) ) {
-        update_option( 'aicb_calendar_data', $import_data['calendar'] );
+        update_option( 'aicb_calendar_data', aicb_sanitize_specific_option( $import_data['calendar'], 'calendar_data' ) );
         $imported[] = 'calendar & hours';
     }
 
-    // Import Advanced Prompts
+    // Import Advanced Prompts (with allowlist validation and sanitization)
+    $prompt_allowlist = [ 'system_prompt', 'prompt_temporal_pivot', 'prompt_tool_instruction', 'prompt_negative_constraints' ];
     if ( isset( $import_data['prompts'] ) && is_array( $import_data['prompts'] ) ) {
         foreach ( $import_data['prompts'] as $key => $value ) {
-            update_option( 'aicb_' . $key, $value );
+            if ( ! in_array( $key, $prompt_allowlist, true ) ) continue;
+            update_option( 'aicb_' . $key, aicb_sanitize_specific_option( $value, $key ) );
         }
         $imported[] = 'advanced prompts';
     }
@@ -555,6 +569,14 @@ function aicb_page_dashboard() {
 
 function aicb_page_settings() {
     if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+
+    // Retrieve any export error persisted via transient across redirect
+    $export_error = get_transient( 'aicb_export_error' );
+    if ( $export_error ) {
+        add_settings_error( 'aicb_options', 'export_empty', $export_error, 'error' );
+        delete_transient( 'aicb_export_error' );
+    }
+
     $providers    = aicb_get_providers();
     $cur_provider = aicb_opt( 'provider' );
     $cur_model    = aicb_opt( 'model' );
