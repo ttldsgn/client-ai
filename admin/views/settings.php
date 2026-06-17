@@ -513,6 +513,76 @@
 <form id="aicb-flush-cache-form" method="post" onsubmit="return confirm('Flush all cached summaries? They will be lazy-regenerated on-demand.')">
     <?php wp_nonce_field( 'aicb_flush_cache', 'aicb_flush_cache_nonce' ); ?>
 </form>
+
+<!-- ── IMPORT / EXPORT CONFIGURATION ── -->
+<div class="aicb-section">
+    <h2>Import / Export Configuration</h2>
+
+    <div class="aicb-notice" style="border-left-color:#d97706;">
+        <strong>🔒 Security Notice:</strong> API keys are <strong>never</strong> included in the export for security reasons.
+        After importing, you will need to re-enter your API keys manually.
+    </div>
+
+    <!-- ── EXPORT ── -->
+    <h3 style="margin-bottom:8px">Export</h3>
+    <p class="description" style="margin-top:0">Select the sections to include in the export file, then click Export.</p>
+
+    <form method="post" action="" style="margin-bottom:18px">
+        <?php wp_nonce_field( 'aicb_export_settings', 'aicb_export_nonce' ); ?>
+
+        <label style="display:block;margin-bottom:8px">
+            <input type="checkbox" name="aicb_export_general" value="1" />
+            <strong>General Settings</strong> — Provider, model, display, behavior, handover, persona, language, cache, feedback, and all other standard settings
+        </label>
+
+        <label style="display:block;margin-bottom:8px">
+            <input type="checkbox" name="aicb_export_calendar" value="1" />
+            <strong>Calendar & Hours</strong> — All calendar entries, default hours, and weekend configuration
+        </label>
+
+        <label style="display:block;margin-bottom:8px">
+            <input type="checkbox" name="aicb_export_prompts" value="1" />
+            <strong>Advanced Prompt Engineering</strong> — System prompt, temporal context, tool coordination, and negative constraints templates
+        </label>
+
+        <label style="display:block;margin-bottom:8px">
+            <input type="checkbox" name="aicb_export_qa" value="1" />
+            <strong>Custom Q&A Entries</strong> — All entries from the Custom Q&A database table
+        </label>
+
+        <label style="display:block;margin-bottom:8px">
+            <input type="checkbox" name="aicb_export_models" value="1" />
+            <strong>Custom Model Definitions</strong> — User-added models from the Models page
+            <span style="color:#d97706">(API keys are excluded)</span>
+        </label>
+
+        <p style="margin-top:16px">
+            <button type="submit" class="button button-primary">📥 Export Configuration</button>
+        </p>
+    </form>
+
+    <hr style="margin:24px 0">
+
+    <!-- ── IMPORT ── -->
+    <h3 style="margin-bottom:8px">Import</h3>
+    <p class="description" style="margin-top:0">Upload a previously exported <code>.json</code> file to restore your settings.</p>
+
+    <div class="aicb-notice" style="border-left-color:#b91c1c;margin-bottom:16px">
+        <strong>⚠️ Warning:</strong> Importing will overwrite your current settings for the sections present in the file.
+        This action <strong>cannot be undone</strong>. We recommend exporting your current configuration first as a backup.
+    </div>
+
+    <form method="post" action="" enctype="multipart/form-data">
+        <?php wp_nonce_field( 'aicb_import_settings', 'aicb_import_nonce' ); ?>
+
+        <p>
+            <input type="file" name="aicb_import_file" accept=".json" required />
+        </p>
+        <p>
+            <button type="submit" class="button button-primary" onclick="return confirm('Are you sure you want to import this configuration? Current settings will be overwritten for the sections contained in the file.');">📥 Import Configuration</button>
+        </p>
+    </form>
+</div>
 </div>
 
 <!-- Embed catalog JSON for JS -->

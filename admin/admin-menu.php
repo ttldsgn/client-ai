@@ -145,6 +145,7 @@ function aicb_admin_calendar_js() {
 
 add_action( 'admin_init', 'aicb_register_settings' );
 function aicb_register_settings() {
+    // Register main options
     foreach ( array_keys( aicb_default_options() ) as $f ) {
         register_setting( 'aicb_options', 'aicb_' . $f, [
             'sanitize_callback' => function( $val ) use ( $f ) { return aicb_sanitize_specific_option( $val, $f ); }
@@ -154,6 +155,220 @@ function aicb_register_settings() {
         register_setting( 'aicb_options', 'aicb_key_' . $pid, [
             'sanitize_callback' => function( $val ) use ( $pid ) { return aicb_sanitize_key_field( $val, $pid ); }
         ] );
+    }
+}
+
+/**
+ * Handle export of plugin settings to a downloadable JSON file.
+ */
+add_action( 'admin_init', 'aicb_handle_export_settings' );
+function aicb_handle_export_settings() {
+    if ( ! isset( $_POST['aicb_export_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_export_nonce'] ) ), 'aicb_export_settings' ) ) {
+        return;
+    }
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( 'Access denied.' );
+    }
+
+    $export = [
+        'plugin'      => 'ClientAI',
+        'version'     => AICB_VERSION,
+        'export_date' => current_time( 'mysql' ),
+        'data'        => [],
+    ];
+
+    // Determine which categories to export from checkboxes
+    $export_general          = isset( $_POST['aicb_export_general'] );
+    $export_calendar         = isset( $_POST['aicb_export_calendar'] );
+    $export_prompts          = isset( $_POST['aicb_export_prompts'] );
+    $export_qa               = isset( $_POST['aicb_export_qa'] );
+    $export_models           = isset( $_POST['aicb_export_models'] );
+
+    // All option keys that are part of general settings (everything except calendar/prompt/key options)
+    $general_option_keys = [
+        'provider', 'model', 'position', 'primary_color', 'icon', 'chat_title', 'welcome_msg',
+        'placeholder', 'footer_text', 'max_tokens', 'rate_limit', 'system_prompt', 'enabled',
+        'show_on_all', 'log_retention_days', 'enable_cache', 'cache_duration', 'indexing_mode',
+        'indexed_post_types', 'enable_handover', 'handover_apology', 'handover_prompt',
+        'handover_type', 'handover_target', 'handover_btn_text', 'contact_btn_text',
+        'contact_btn_url', 'handover_primary_text', 'handover_secondary_bg',
+        'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
+        'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
+        'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+    ];
+
+    if ( $export_general ) {
+        $general = [];
+        foreach ( $general_option_keys as $key ) {
+            $general[ $key ] = get_option( 'aicb_' . $key, aicb_default_options()[ $key ] ?? '' );
+        }
+        $export['data']['general'] = $general;
+    }
+
+    // Calendar & Hours
+    if ( $export_calendar ) {
+        $export['data']['calendar'] = get_option( 'aicb_calendar_data', aicb_default_options()['calendar_data'] );
+    }
+
+    // Advanced Prompt Engineering
+    if ( $export_prompts ) {
+        $prompt_keys = [ 'system_prompt', 'prompt_temporal_pivot', 'prompt_tool_instruction', 'prompt_negative_constraints' ];
+        $prompts = [];
+        foreach ( $prompt_keys as $key ) {
+            $prompts[ $key ] = get_option( 'aicb_' . $key, aicb_default_options()[ $key ] ?? '' );
+        }
+        $export['data']['prompts'] = $prompts;
+    }
+
+    // Custom Q&A Entries (from database table)
+    if ( $export_qa ) {
+        global $wpdb;
+        $qa_table = $wpdb->prefix . AICB_QA_TABLE;
+        $qa_rows = $wpdb->get_results( "SELECT question, answer, active FROM {$qa_table} ORDER BY id ASC", ARRAY_A );
+        $export['data']['qa_entries'] = $qa_rows ?: [];
+    }
+
+    // Custom Model Definitions (only is_custom = 1, without api_key)
+    if ( $export_models ) {
+        global $wpdb;
+        $model_table = $wpdb->prefix . AICB_MODEL_TABLE;
+        $model_rows = $wpdb->get_results(
+            "SELECT provider_id, provider_name, model_id, name, description, context_k, recommended, supports_tools, api_endpoint, sort_order, active
+             FROM {$model_table}
+             WHERE is_custom = 1
+             ORDER BY sort_order ASC, id ASC",
+            ARRAY_A
+        );
+        $export['data']['custom_models'] = $model_rows ?: [];
+    }
+
+    // No data selected? Show error and bail
+    if ( empty( $export['data'] ) ) {
+        add_settings_error( 'aicb_options', 'export_empty', 'Export failed: No sections were selected. Please check at least one checkbox.', 'error' );
+        $redirect_url = wp_get_referer() ?: admin_url( 'admin.php?page=ai-chatbot-settings' );
+        wp_safe_redirect( $redirect_url );
+        exit;
+    }
+
+    // Send JSON file
+    $filename = 'client-ai-settings-' . date( 'Y-m-d' ) . '.json';
+    nocache_headers();
+    header( 'Content-Type: application/json; charset=utf-8' );
+    header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+    echo wp_json_encode( $export, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+    exit;
+}
+
+/**
+ * Handle import of plugin settings from an uploaded JSON file.
+ */
+add_action( 'admin_init', 'aicb_handle_import_settings' );
+function aicb_handle_import_settings() {
+    if ( ! isset( $_POST['aicb_import_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_import_nonce'] ) ), 'aicb_import_settings' ) ) {
+        return;
+    }
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( 'Access denied.' );
+    }
+
+    if ( ! isset( $_FILES['aicb_import_file'] ) || UPLOAD_ERR_OK !== $_FILES['aicb_import_file']['error'] ) {
+        add_settings_error( 'aicb_options', 'import_failed', 'Import failed: No file uploaded or upload error occurred.', 'error' );
+        return;
+    }
+
+    $file = $_FILES['aicb_import_file'];
+    $ext  = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
+    if ( 'json' !== $ext ) {
+        add_settings_error( 'aicb_options', 'import_failed', 'Import failed: Only .json files are supported.', 'error' );
+        return;
+    }
+
+    $contents = file_get_contents( $file['tmp_name'] );
+    $data     = json_decode( $contents, true );
+
+    if ( ! is_array( $data ) || ! isset( $data['data'] ) ) {
+        add_settings_error( 'aicb_options', 'import_failed', 'Import failed: Invalid JSON format.', 'error' );
+        return;
+    }
+
+    $import_data = $data['data'];
+    $imported    = [];
+
+    // Import General Settings
+    if ( isset( $import_data['general'] ) && is_array( $import_data['general'] ) ) {
+        foreach ( $import_data['general'] as $key => $value ) {
+            update_option( 'aicb_' . $key, $value );
+        }
+        $imported[] = 'general settings';
+    }
+
+    // Import Calendar & Hours
+    if ( isset( $import_data['calendar'] ) && is_array( $import_data['calendar'] ) ) {
+        update_option( 'aicb_calendar_data', $import_data['calendar'] );
+        $imported[] = 'calendar & hours';
+    }
+
+    // Import Advanced Prompts
+    if ( isset( $import_data['prompts'] ) && is_array( $import_data['prompts'] ) ) {
+        foreach ( $import_data['prompts'] as $key => $value ) {
+            update_option( 'aicb_' . $key, $value );
+        }
+        $imported[] = 'advanced prompts';
+    }
+
+    // Import Custom Q&A Entries (replace all)
+    if ( isset( $import_data['qa_entries'] ) && is_array( $import_data['qa_entries'] ) ) {
+        global $wpdb;
+        $qa_table = $wpdb->prefix . AICB_QA_TABLE;
+        $wpdb->query( "TRUNCATE TABLE {$qa_table}" );
+        foreach ( $import_data['qa_entries'] as $entry ) {
+            if ( ! isset( $entry['question'], $entry['answer'] ) ) continue;
+            $wpdb->insert( $qa_table, [
+                'question' => sanitize_textarea_field( $entry['question'] ),
+                'answer'   => sanitize_textarea_field( $entry['answer'] ),
+                'active'   => isset( $entry['active'] ) ? (int) $entry['active'] : 1,
+            ], [ '%s', '%s', '%d' ] );
+        }
+        $imported[] = 'custom Q&A entries (' . count( $import_data['qa_entries'] ) . ' items)';
+    }
+
+    // Import Custom Model Definitions (replace all custom models)
+    if ( isset( $import_data['custom_models'] ) && is_array( $import_data['custom_models'] ) ) {
+        global $wpdb;
+        $model_table = $wpdb->prefix . AICB_MODEL_TABLE;
+        // Delete existing custom models
+        $wpdb->delete( $model_table, [ 'is_custom' => 1 ], [ '%d' ] );
+        $count = 0;
+        foreach ( $import_data['custom_models'] as $model ) {
+            if ( empty( $model['provider_id'] ) || empty( $model['model_id'] ) || empty( $model['name'] ) ) continue;
+            $max_sort = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT MAX(sort_order) FROM {$model_table} WHERE provider_id = %s",
+                $model['provider_id']
+            ) );
+            $wpdb->insert( $model_table, [
+                'provider_id'    => sanitize_key( $model['provider_id'] ),
+                'provider_name'  => sanitize_text_field( $model['provider_name'] ?? $model['provider_id'] ),
+                'model_id'       => sanitize_text_field( $model['model_id'] ),
+                'name'           => sanitize_text_field( $model['name'] ),
+                'description'    => sanitize_textarea_field( $model['description'] ?? '' ),
+                'context_k'      => (int) ( $model['context_k'] ?? 0 ),
+                'recommended'    => ! empty( $model['recommended'] ) ? 1 : 0,
+                'supports_tools' => ! empty( $model['supports_tools'] ) ? 1 : 0,
+                'api_endpoint'   => esc_url_raw( trim( $model['api_endpoint'] ?? '' ) ),
+                'is_custom'      => 1,
+                'active'         => isset( $model['active'] ) ? (int) $model['active'] : 1,
+                'sort_order'     => $max_sort + 1,
+                // api_key intentionally excluded — never exported for security
+            ], [ '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%d' ] );
+            $count++;
+        }
+        $imported[] = 'custom models (' . $count . ' items)';
+    }
+
+    if ( empty( $imported ) ) {
+        add_settings_error( 'aicb_options', 'import_nodata', 'Import completed but no recognized data sections were found in the file.', 'warning' );
+    } else {
+        add_settings_error( 'aicb_options', 'import_success', 'Import successful: ' . implode( ', ', $imported ) . ' restored.', 'updated' );
     }
 }
 

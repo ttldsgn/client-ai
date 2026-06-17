@@ -2,11 +2,11 @@
 
 A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supports native function calling, dynamic multi-provider LLM adapters, a searchable global holiday seeder, and advanced prompt engineering controls.
 
-[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)](#) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](#) [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](#) [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](#) [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
+[![Version](https://img.shields.io/badge/version-2.5.1-blue.svg)](#) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](#) [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](#) [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](#) [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
 
 * * *
 
-## Important Disclosures &amp; Privacy Notice
+## Important Disclosures & Privacy Notice
 
 To deliver advanced context-aware assistance and dynamically fetched calendar parameters, this plugin interfaces with the following external services. All data transmitted is limited strictly to the resources required to process requests.
 
@@ -45,19 +45,20 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 - **Conversation History**: Full threaded chat transcripts grouped by session. View the complete back-and-forth of any conversation in a chat-bubble interface from the admin area.
 - **Deterministic Calendar Tool**: Empower the AI to answer business opening-hours questions using the check\_calendar function. It supports dynamic weekday/weekend defaults, specific date overrides, and annual recurring dates.
 - **Global Holiday Seeder**: Connects to the Nager.Date API with a searchable autocomplete country selector. This allows you to automatically pull and seed holidays from any supported country directly into your schedules database.
-- **Advanced Prompt Engineering**: A toggleable developer panel inside your settings page lets you inspect, edit, and experiment with the sub-prompts coordinating the AI’s temporal pivots, tool-calling protocols, and negative constraints. Complete with a secure "Reset Engineering Templates" button.
+- **Advanced Prompt Engineering**: A toggleable developer panel inside your settings page lets you inspect, edit, and experiment with the sub-prompts coordinating the AI's temporal pivots, tool-calling protocols, and negative constraints. Complete with a secure "Reset Engineering Templates" button.
+- **Import / Export Configuration**: Backup and restore your entire plugin configuration via the Settings page. Select specific sections to export (General Settings, Calendar & Hours, Advanced Prompt Engineering, Custom Q&A Entries, Custom Model Definitions) to a downloadable JSON file. API keys are securely excluded from exports. Import previously exported files to restore your configuration with a single click.
 - **Strategy A Context Retrieval**: Intelligently compiles clean text digests of your allowed post types on save, caching condensed summaries to significantly reduce API token usage and latency.
-- **Custom Q&amp;A Overrides**: Prioritized semantic matching table to bypass expensive LLM inference entirely for exact business FAQs and keywords.
+- **Custom Q&A Overrides**: Prioritized semantic matching table to bypass expensive LLM inference entirely for exact business FAQs and keywords.
 - **Accessibility-First Design (WCAG 2.2 AA Principles)**: Engineered with accessibility as a core priority. The frontend chatbot uses strict keyboard focus management (capturing and returning focus cleanly to the launcher on open/close), a native Escape key closing hook, ARIA landmark and live announcer roles (role="dialog", role="log", aria-live="polite"), and full CSS support for prefers-reduced-motion browser media queries.
   
-  *Administrator Responsibility Note:* While the chatbot’s structural engine is built to fully support WCAG 2.2 AA standards, complete compliance on your live website ultimately depends on your administrative choices. Ensure your chosen "Primary Color" under settings maintains a contrast ratio of at least 4.5:1 against white text, and that your custom welcome messages and Q&amp;As remain descriptive, clear, and readable.
-- **Enterprise Cryptography &amp; Security**: Secure AES-256-GCM database encryption for API keys, strict Server-Side Request Forgery (SSRF) endpoint filters, WP nonce verification, and CDN-aware proxy IP rate limiting.
+  *Administrator Responsibility Note:* While the chatbot's structural engine is built to fully support WCAG 2.2 AA standards, complete compliance on your live website ultimately depends on your administrative choices. Ensure your chosen "Primary Color" under settings maintains a contrast ratio of at least 4.5:1 against white text, and that your custom welcome messages and Q&As remain descriptive, clear, and readable.
+- **Enterprise Cryptography & Security**: Secure AES-256-GCM database encryption for API keys, strict Server-Side Request Forgery (SSRF) endpoint filters, WP nonce verification, and CDN-aware proxy IP rate limiting.
 - **Models Management**: A dedicated admin page for managing AI models per provider. Add custom models, edit existing ones, toggle active status, or reset a provider to its default models — all without editing JSON files. Built-in models are seeded from the plugin and automatically updated on upgrade.
-- **Audit Logs &amp; Cleanup**: Paginated, filterable conversation logging with automated background cron cleanup tasks to manage database storage.
+- **Audit Logs & Cleanup**: Paginated, filterable conversation logging with automated background cron cleanup tasks to manage database storage.
 
 * * *
 
-## Installation &amp; Setup
+## Installation & Setup
 
 ### 1. Installation
 
@@ -67,7 +68,7 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 
 ### 2. Basic Configuration
 
-1. Go to **Client AI &gt; Settings** in your WordPress admin menu.
+1. Go to **Client AI > Settings** in your WordPress admin menu.
 2. Select your active AI Provider and input your API credentials.
 3. Choose your desired model from the dynamic catalog.
 4. Set your primary brand color, chatbot title, and default welcome message.
@@ -84,14 +85,14 @@ You can output the chatbot toggle on your site in two ways:
 
 ## Models Management
 
-Client AI introduces a database-driven Models system accessible via **Client AI &gt; Models** in the WordPress admin. This replaces the old JSON-only catalog with a flexible, CRUD-capable approach.
+Client AI introduces a database-driven Models system accessible via **Client AI > Models** in the WordPress admin. This replaces the old JSON-only catalog with a flexible, CRUD-capable approach.
 
 ### Features
 
 - **Built-in Models**: Automatically seeded from assets/models.json on plugin activation. Marked as "Built-in" and protected from accidental deletion. Legacy "custom-model" seeds have been removed to ensure new custom installations start with a completely clean slate.
 - **Custom Models**: Add your own models for any provider. Enter the model ID exactly as required by the API (e.g. `mistralai/mistral-small-3.1-24b-instruct:free` on OpenRouter), give it a display name, description, and configure tool support.
-- **Custom Endpoints &amp; Keys**: When adding a model under the Custom / Self-hosted provider, you can specify a model-specific **Base URL Endpoint** and **Custom API Key**. Stored keys are encrypted securely in the database using AES-256-GCM.
-- **Edit &amp; Toggle**: Edit any model's display name, description, context window, and flags. Toggle models active/inactive without deleting them.
+- **Custom Endpoints & Keys**: When adding a model under the Custom / Self-hosted provider, you can specify a model-specific **Base URL Endpoint** and **Custom API Key**. Stored keys are encrypted securely in the database using AES-256-GCM.
+- **Edit & Toggle**: Edit any model's display name, description, context window, and flags. Toggle models active/inactive without deleting them.
 - **Reset Provider to Defaults**: Remove all custom models for a provider and re-seed the factory defaults — useful after experimenting.
 
 ### How It Works
@@ -118,7 +119,7 @@ By expanding the 'Advanced Prompt Engineering' panel on the settings page, devel
 
 - **Temporal Context Template**: Instructs the model on how to handle the current system time and date. Supports {current\_date} and {current\_time} dynamic tag replacements.
 - **Tool Coordination Protocol**: Teaches the model exactly when to call the calendar tool vs. reading static FAQs, and how to negotiate rule overrides.
-- **Negative Constraints &amp; Integrity**: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
+- **Negative Constraints & Integrity**: Governs conversational formatting, strict output length limits, context leak safeguards, and forbidden word exclusions.
 
 If a developer's customizations cause unwanted behavior or system drift, clicking the Reset Engineering Templates button will securely purge custom overrides and restore the factory prompt schemas.
 
@@ -136,7 +137,7 @@ To keep the core plugin lightweight, advanced features—including the live Disc
 
 * * *
 
-## Open Source &amp; Community License
+## Open Source & Community License
 
 This plugin is fully open source and released under the GPL-2.0+ license.
 
