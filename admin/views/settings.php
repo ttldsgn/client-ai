@@ -460,7 +460,8 @@
                         <td>
                             <textarea id="aicb_system_prompt" name="aicb_system_prompt"
                             rows="5" class="large-text"><?= esc_textarea( aicb_opt('system_prompt') ) ?></textarea>
-                            <p class="description"><?php esc_html_e( 'Page content is appended automatically. You don\'t need to mention it here.', 'ai-chatbot' ); ?></p>
+                            <p class="description"><?php esc_html_e( "Page content is appended automatically. You don't need to mention it here.", 'ai-chatbot' ); ?></p>
+
                         </td>
                     </tr>
                     <tr>
