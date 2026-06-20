@@ -46,6 +46,9 @@ function aicb_enqueue_frontend() {
 
     $enable_feedback = aicb_opt( 'enable_feedback' );
 
+    $enable_lead_capture = aicb_opt( 'enable_lead_capture' );
+    $enable_transcript   = aicb_opt( 'enable_transcript_export' );
+
     wp_localize_script( 'aicb-script', 'aicbData', [
         'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
         'nonce'             => wp_create_nonce( 'aicb_chat' ),
@@ -66,6 +69,12 @@ function aicb_enqueue_frontend() {
         'primaryBtnUrl'     => aicb_clean_url( aicb_get_handover_url() ),
         'secondaryBtnText'  => esc_html( aicb_opt( 'contact_btn_text' ) ),
         'secondaryBtnUrl'   => aicb_clean_url( aicb_opt( 'contact_btn_url' ) ),
+        'enableLeadCapture'   => $enable_lead_capture ? true : false,
+        'leadNonce'           => $enable_lead_capture ? wp_create_nonce( 'aicb_lead' ) : '',
+        'enableTranscript'    => $enable_transcript ? true : false,
+        'transcriptNonce'     => $enable_transcript ? wp_create_nonce( 'aicb_export_transcript' ) : '',
+        'handoverPrompt'      => aicb_opt( 'handover_prompt' ),
+        'showFooterHelpButton'=> aicb_opt( 'show_footer_help_button' ) ? true : false,
     ] );
 }
 
@@ -108,8 +117,24 @@ function aicb_ajax_chat() {
 
     $question   = sanitize_textarea_field( wp_unslash( $_POST['question'] ?? '' ) );
     $page_id    = (int) ( $_POST['page_id'] ?? 0 );
+
+    // Server-side session management: use per-session transients keyed by session_id.
+    // Each session stores the creator's ip_hash and auto-expires after 24 hours.
     $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
-    $confirm    = isset( $_POST['confirm_handover'] ) && $_POST['confirm_handover'] === 'true';
+    $session_key = 'aicb_session_' . $session_id;
+    $session_data = get_transient( $session_key );
+
+    if ( empty( $session_id ) || false === $session_data ) {
+        // New session: generate server-side identifier (unforgeable random bytes)
+        $session_id = 'sess_' . bin2hex( random_bytes( 16 ) );
+        $session_data = [ 'ip_hash' => $ip_hash ];
+        set_transient( 'aicb_session_' . $session_id, $session_data, DAY_IN_SECONDS );
+    } elseif ( ! hash_equals( $session_data['ip_hash'], $ip_hash ) ) {
+        // Session exists but IP mismatch — reject to prevent session hijacking
+        wp_send_json_error( [ 'message' => 'Session expired or invalid.' ], 403 );
+    }
+
+    $confirm = isset( $_POST['confirm_handover'] ) && $_POST['confirm_handover'] === 'true';
 
     if ( strlen( $question ) < 2 || strlen( $question ) > 1000 ) {
         wp_send_json_error( [ 'message' => 'Invalid question length.' ], 400 );
@@ -131,10 +156,11 @@ function aicb_ajax_chat() {
                 'source'           => 'custom-handover',
                 'provider'         => 'custom',
                 'handover'         => true,
+                'session_id'       => $session_id,
                 'primaryBtnText'   => esc_html( aicb_opt( 'handover_btn_text' ) ),
                 'primaryBtnUrl'    => aicb_clean_url( aicb_get_handover_url() ),
                 'secondaryBtnText' => esc_html( aicb_opt( 'contact_btn_text' ) ),
-                'secondaryBtnUrl'  => aicb_clean_url( aicb_opt( 'contact_btn_url' ) )
+                'secondaryBtnUrl'  => esc_url_raw( aicb_clean_url( aicb_opt( 'contact_btn_url' ) ) )
             ] );
         }
     }
@@ -144,16 +170,16 @@ function aicb_ajax_chat() {
     $custom = $wpdb->get_row( $wpdb->prepare(
         "SELECT answer FROM {$qa_table} WHERE active = 1 AND (LOWER(%s) LIKE CONCAT('%%', LOWER(question), '%%') OR LOWER(question) LIKE CONCAT('%%', LOWER(%s), '%%')) LIMIT 1", $question, $question
     ) );
-    if ( $custom ) {
-        $answer = sanitize_textarea_field( $custom->answer );
-        aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, 'custom', 'custom-match' );
-        wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom' ] );
+        if ( $custom ) {
+            $answer = sanitize_textarea_field( $custom->answer );
+            aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, 'custom', 'custom-match' );
+            wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom', 'session_id' => $session_id ] );
     }
 
     if ( aicb_is_handover_requested( $question ) ) {
         $answer = aicb_opt( 'handover_prompt' );
         aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, 'custom', 'handover-prompt' );
-        wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom-handover', 'provider' => 'custom', 'awaiting_confirmation' => true ] );
+        wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom-handover', 'provider' => 'custom', 'awaiting_confirmation' => true, 'session_id' => $session_id ] );
     }
 
     $page_context = aicb_retrieve_relevant_contexts( $question, $page_id );
@@ -271,12 +297,18 @@ function aicb_ajax_chat() {
         if ( $handover_triggered ) {
             $answer = aicb_opt( 'handover_apology' );
             aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provider, $model );
-            wp_send_json_success( [ 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider, 'awaiting_confirmation' => true ] );
+            wp_send_json_success( [ 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider, 'awaiting_confirmation' => true, 'session_id' => $session_id ] );
         }
     }
 
     $log_id = aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provider, $model );
-    wp_send_json_success( [ 'log_id' => $log_id, 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider ] );
+    wp_send_json_success( [
+        'log_id'      => $log_id,
+        'answer'      => $answer,
+        'source'      => 'ai-reasoning',
+        'provider'    => $provider,
+        'session_id'  => $session_id
+    ] );
 }
 
 function aicb_set_security_headers() {
@@ -291,13 +323,25 @@ function aicb_set_security_headers() {
    4. CORE UTILITY HELPERS
    ========================================================= */
 
+/**
+ * Generate a server-side session identifier (not used for signing anymore;
+ * kept as a no-op for backward compat with any third-party code that may
+ * still call it).
+ * @deprecated Session auth is now IP-bound via aicb_session_store.
+ */
+function aicb_generate_session_token( $session_id ) {
+    return $session_id;
+}
+
 function aicb_get_user_ip() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
-        $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-    } elseif ( defined( 'AICB_TRUST_PROXY' ) && AICB_TRUST_PROXY && ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-        $ips = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
-        $ip  = trim( $ips[0] );
+    if ( defined( 'AICB_TRUST_PROXY' ) && AICB_TRUST_PROXY ) {
+        if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+            $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+        } elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+            $ips = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
+            $ip = trim( $ips[0] );
+        }
     }
     return filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : 'unknown';
 }
@@ -306,7 +350,30 @@ function aicb_is_handover_requested( $question ) {
     if ( ! aicb_opt( 'enable_handover' ) ) return false;
     $question = strtolower( trim( $question ) );
     $question = preg_replace( '/[^\w\s]/u', '', $question );
-    $phrases = [ 'live person', 'real person', 'human', 'representative', 'operator', 'talk to someone', 'contact me', 'contact us' ];
+
+    // Built-in default phrases
+    $phrases = [
+        'live person', 'real person', 'human', 'representative', 'operator',
+        'talk to someone', 'contact me', 'contact us', 'need help', 'need a person',
+        'speak to someone', 'human support', 'real support', 'agent please',
+        'schedule a call', 'need a callback', 'customer service', 'talk to an agent',
+        'not helpful', 'this isnt working', 'this isn\'t working', 'doesn\'t answer',
+        'doesnt answer', 'i\'m stuck', 'im stuck', 'cant find', 'can\'t find',
+        'frustrated', 'annoyed', 'ridiculous', 'unacceptable', 'worst',
+        'need to speak', 'want to speak', 'talk to a person', 'speak to a person',
+        'human help', 'real human', 'actual person', 'live agent'
+    ];
+
+    // Merge admin-configured custom trigger phrases (one per line)
+    $custom = aicb_opt( 'handover_trigger_phrases' );
+    if ( ! empty( $custom ) ) {
+        $custom_lines = explode( "\n", $custom );
+        foreach ( $custom_lines as $line ) {
+            $line = strtolower( trim( $line ) );
+            if ( ! empty( $line ) ) $phrases[] = $line;
+        }
+    }
+
     foreach ( $phrases as $phrase ) {
         if ( strpos( $question, $phrase ) !== false ) return true;
     }
@@ -410,4 +477,167 @@ function aicb_ajax_feedback() {
     }
 
     wp_send_json_success( [ 'message' => 'Feedback recorded.' ] );
+}
+
+/* =========================================================
+   6. LEAD CAPTURE AJAX ENDPOINT
+   ========================================================= */
+
+add_action( 'wp_ajax_aicb_lead_submit',        'aicb_ajax_lead_submit' );
+add_action( 'wp_ajax_nopriv_aicb_lead_submit', 'aicb_ajax_lead_submit' );
+function aicb_ajax_lead_submit() {
+    aicb_set_security_headers();
+    check_ajax_referer( 'aicb_lead', 'nonce' );
+
+    if ( ! aicb_opt( 'enable_lead_capture' ) ) {
+        wp_send_json_error( [ 'message' => 'Lead capture is disabled.' ], 403 );
+    }
+
+    $name       = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+    $email      = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+    $message    = sanitize_textarea_field( wp_unslash( $_POST['message'] ?? '' ) );
+    $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
+    $page_id    = (int) ( $_POST['page_id'] ?? 0 );
+
+    // Honeypot: if 'website' field is filled, silently reject (bot)
+    if ( ! empty( $_POST['website'] ) ) {
+        wp_send_json_success( [ 'message' => 'Thank you!' ] );
+    }
+
+    // Rate limiting per IP
+    $ip_hash = hash( 'sha256', aicb_get_user_ip() );
+    $rate_key = 'aicb_lead_rate_' . $ip_hash;
+    $hits     = (int) get_transient( $rate_key );
+    if ( $hits >= 3 ) {
+        wp_send_json_error( [ 'message' => 'Too many submissions. Please try again later.' ], 429 );
+    }
+    set_transient( $rate_key, $hits + 1, HOUR_IN_SECONDS );
+
+    if ( empty( $name ) || empty( $email ) || ! is_email( $email ) ) {
+        wp_send_json_error( [ 'message' => 'Please provide a valid name and email address.' ], 400 );
+    }
+
+    if ( strlen( $name ) > 255 || strlen( $email ) > 255 ) {
+        wp_send_json_error( [ 'message' => 'Invalid input length.' ], 400 );
+    }
+
+    if ( strlen( $message ) > 2000 ) {
+        $message = substr( $message, 0, 2000 );
+    }
+
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LEADS_TABLE;
+
+    $inserted = $wpdb->insert(
+        $table,
+        [
+            'name'       => $name,
+            'email'      => $email,
+            'message'    => $message,
+            'session_id' => $session_id,
+            'page_id'    => $page_id,
+            'created_at' => current_time( 'mysql' ),
+        ],
+        [ '%s', '%s', '%s', '%s', '%d', '%s' ]
+    );
+
+    if ( false === $inserted ) {
+        wp_send_json_error( [ 'message' => 'Database error.' ], 500 );
+    }
+
+    // Optional email notification
+    $notification_email = aicb_opt( 'lead_notification_email' );
+    if ( ! empty( $notification_email ) && is_email( $notification_email ) ) {
+        $page_title = $page_id ? get_the_title( $page_id ) : 'Unknown';
+        $subject = sprintf( 'New lead from %s', get_bloginfo( 'name' ) );
+        $body    = "Name: {$name}\nEmail: {$email}\nMessage: {$message}\nPage: {$page_title}\nSession: {$session_id}\n";
+        wp_mail( $notification_email, $subject, $body );
+    }
+
+    wp_send_json_success( [ 'message' => 'Thank you! We will get back to you soon.' ] );
+}
+
+/* =========================================================
+   7. TRANSCRIPT EXPORT AJAX ENDPOINT
+   ========================================================= */
+
+add_action( 'wp_ajax_aicb_export_transcript',        'aicb_ajax_export_transcript' );
+add_action( 'wp_ajax_nopriv_aicb_export_transcript', 'aicb_ajax_export_transcript' );
+function aicb_ajax_export_transcript() {
+    aicb_set_security_headers();
+    check_ajax_referer( 'aicb_export_transcript', 'nonce' );
+
+    if ( ! aicb_opt( 'enable_transcript_export' ) ) {
+        wp_send_json_error( [ 'message' => 'Transcript export is disabled.' ], 403 );
+    }
+
+    $email      = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+    $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
+
+    // Honeypot: if 'website' field is filled, silently reject (bot)
+    if ( ! empty( $_POST['website'] ) ) {
+        wp_send_json_success( [ 'message' => 'Transcript sent!' ] );
+    }
+
+    // Rate limiting per IP
+    $ip_hash = hash( 'sha256', aicb_get_user_ip() );
+    $rate_key = 'aicb_transcript_rate_' . $ip_hash;
+    $hits     = (int) get_transient( $rate_key );
+    if ( $hits >= 2 ) {
+        wp_send_json_error( [ 'message' => 'Too many requests. Please try again later.' ], 429 );
+    }
+    set_transient( $rate_key, $hits + 1, HOUR_IN_SECONDS );
+
+    if ( empty( $email ) || ! is_email( $email ) ) {
+        wp_send_json_error( [ 'message' => 'Please provide a valid email address.' ], 400 );
+    }
+
+    if ( empty( $session_id ) ) {
+        wp_send_json_error( [ 'message' => 'No conversation session found.' ], 400 );
+    }
+
+    // Verify session ownership: session must exist as a transient
+    // and the requester's IP must match the IP that created the session
+    $session_data = get_transient( 'aicb_session_' . $session_id );
+    if ( false === $session_data ) {
+        wp_send_json_error( [ 'message' => 'Session not found or has expired.' ], 403 );
+    }
+    if ( ! hash_equals( $session_data['ip_hash'], $ip_hash ) ) {
+        wp_send_json_error( [ 'message' => 'Unauthorized: session IP mismatch.' ], 403 );
+    }
+
+    // Build transcript from logs
+    global $wpdb;
+    $lt = $wpdb->prefix . AICB_LOG_TABLE;
+    $messages = $wpdb->get_results( $wpdb->prepare(
+        "SELECT question, answer, created_at FROM {$lt} WHERE session_id = %s ORDER BY id ASC",
+        $session_id
+    ) );
+
+    if ( empty( $messages ) ) {
+        wp_send_json_error( [ 'message' => 'No conversation history found for this session.' ], 404 );
+    }
+
+    $site_name = get_bloginfo( 'name' );
+    $transcript = "Conversation with {$site_name}\n";
+    $transcript .= str_repeat( '=', 40 ) . "\n\n";
+
+    foreach ( $messages as $msg ) {
+        $time = $msg->created_at ? date( 'M j, Y g:i A', strtotime( $msg->created_at ) ) : '';
+        $transcript .= "[{$time}]\n";
+        $transcript .= "You: {$msg->question}\n";
+        $transcript .= "Bot: {$msg->answer}\n\n";
+    }
+
+    $transcript .= str_repeat( '=', 40 ) . "\n";
+    $transcript .= "Exported from {$site_name}\n";
+
+    $subject = sprintf( 'Your conversation with %s', $site_name );
+    $sent = wp_mail( $email, $subject, $transcript );
+
+    if ( ! $sent ) {
+        wp_send_json_error( [ 'message' => 'Failed to send email. Please try again.' ], 500 );
+    }
+
+    wp_send_json_success( [ 'message' => 'Transcript sent! Please check your email.' ] );
 }

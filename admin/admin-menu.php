@@ -3,13 +3,14 @@ defined( 'ABSPATH' ) || exit;
 
 add_action( 'admin_menu', 'aicb_admin_menu' );
 function aicb_admin_menu() {
-    add_menu_page( 'Client AI', 'Client AI', 'manage_options', 'ai-chatbot', 'aicb_page_dashboard', 'dashicons-format-chat', 80 );
-    add_submenu_page( 'ai-chatbot', 'Dashboard',  'Dashboard',  'manage_options', 'ai-chatbot',             'aicb_page_dashboard' );
-    add_submenu_page( 'ai-chatbot', 'Settings',   'Settings',   'manage_options', 'ai-chatbot-settings',    'aicb_page_settings'  );
-    add_submenu_page( 'ai-chatbot', 'Calendar',   'Calendar',   'manage_options', 'ai-chatbot-calendar',    'aicb_page_calendar'  );
-    add_submenu_page( 'ai-chatbot', 'Custom Q&A', 'Custom Q&A', 'manage_options', 'ai-chatbot-qa',          'aicb_page_qa'        );
-    add_submenu_page( 'ai-chatbot', 'Models',     'Models',     'manage_options', 'ai-chatbot-models',       'aicb_page_models'    );
-    add_submenu_page( 'ai-chatbot', 'Chat Logs',  'Chat Logs',  'manage_options', 'ai-chatbot-logs',        'aicb_page_logs'      );
+    add_menu_page( __( 'Client AI', 'ai-chatbot' ), __( 'Client AI', 'ai-chatbot' ), 'manage_options', 'ai-chatbot', 'aicb_page_dashboard', 'dashicons-format-chat', 80 );
+    add_submenu_page( 'ai-chatbot', __( 'Dashboard', 'ai-chatbot' ),  __( 'Dashboard', 'ai-chatbot' ),  'manage_options', 'ai-chatbot',             'aicb_page_dashboard' );
+    add_submenu_page( 'ai-chatbot', __( 'Settings', 'ai-chatbot' ),   __( 'Settings', 'ai-chatbot' ),   'manage_options', 'ai-chatbot-settings',    'aicb_page_settings'  );
+    add_submenu_page( 'ai-chatbot', __( 'Calendar', 'ai-chatbot' ),   __( 'Calendar', 'ai-chatbot' ),   'manage_options', 'ai-chatbot-calendar',    'aicb_page_calendar'  );
+    add_submenu_page( 'ai-chatbot', __( 'Custom Q&A', 'ai-chatbot' ), __( 'Custom Q&A', 'ai-chatbot' ), 'manage_options', 'ai-chatbot-qa',          'aicb_page_qa'        );
+    add_submenu_page( 'ai-chatbot', __( 'Models', 'ai-chatbot' ),     __( 'Models', 'ai-chatbot' ),     'manage_options', 'ai-chatbot-models',       'aicb_page_models'    );
+    add_submenu_page( 'ai-chatbot', __( 'Chat Logs', 'ai-chatbot' ),  __( 'Chat Logs', 'ai-chatbot' ),  'manage_options', 'ai-chatbot-logs',        'aicb_page_logs'      );
+    add_submenu_page( 'ai-chatbot', __( 'Leads', 'ai-chatbot' ),      __( 'Leads', 'ai-chatbot' ),      'manage_options', 'ai-chatbot-leads',       'aicb_page_leads'     );
 }
 
 add_action( 'admin_head', 'aicb_admin_styles' );
@@ -167,7 +168,7 @@ function aicb_handle_export_settings() {
         return;
     }
     if ( ! current_user_can( 'manage_options' ) ) {
-        wp_die( 'Access denied.' );
+        wp_die( __( 'Access denied.', 'ai-chatbot' ) );
     }
 
     $export = [
@@ -190,11 +191,12 @@ function aicb_handle_export_settings() {
         'placeholder', 'footer_text', 'max_tokens', 'rate_limit', 'system_prompt', 'enabled',
         'show_on_all', 'log_retention_days', 'enable_cache', 'cache_duration', 'indexing_mode',
         'indexed_post_types', 'enable_handover', 'handover_apology', 'handover_prompt',
-        'handover_type', 'handover_target', 'handover_btn_text', 'contact_btn_text',
-        'contact_btn_url', 'handover_primary_text', 'handover_secondary_bg',
-        'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
-        'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
-        'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'handover_trigger_phrases', 'show_footer_help_button', 'handover_type', 'handover_target',
+        'handover_btn_text', 'contact_btn_text', 'contact_btn_url', 'handover_primary_text',
+        'handover_secondary_bg', 'handover_secondary_text', 'handover_btn_radius',
+        'always_show_handover_buttons', 'business_name', 'pronoun_perspective', 'chatbot_tone',
+        'chatbot_language_mode', 'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'enable_lead_capture', 'lead_notification_email', 'enable_transcript_export',
     ];
 
     if ( $export_general ) {
@@ -244,7 +246,7 @@ function aicb_handle_export_settings() {
 
     // No data selected? Show error and bail
     if ( empty( $export['data'] ) ) {
-        set_transient( 'aicb_export_error', 'Export failed: No sections were selected. Please check at least one checkbox.', 30 );
+        set_transient( 'aicb_export_error', __( 'Export failed: No sections were selected. Please check at least one checkbox.', 'ai-chatbot' ), 30 );
         $redirect_url = wp_get_referer() ?: admin_url( 'admin.php?page=ai-chatbot-settings' );
         wp_safe_redirect( $redirect_url );
         exit;
@@ -268,18 +270,18 @@ function aicb_handle_import_settings() {
         return;
     }
     if ( ! current_user_can( 'manage_options' ) ) {
-        wp_die( 'Access denied.' );
+        wp_die( __( 'Access denied.', 'ai-chatbot' ) );
     }
 
     if ( ! isset( $_FILES['aicb_import_file'] ) || UPLOAD_ERR_OK !== $_FILES['aicb_import_file']['error'] ) {
-        add_settings_error( 'aicb_options', 'import_failed', 'Import failed: No file uploaded or upload error occurred.', 'error' );
+        add_settings_error( 'aicb_options', 'import_failed', __( 'Import failed: No file uploaded or upload error occurred.', 'ai-chatbot' ), 'error' );
         return;
     }
 
     $file = $_FILES['aicb_import_file'];
     $ext  = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
     if ( 'json' !== $ext ) {
-        add_settings_error( 'aicb_options', 'import_failed', 'Import failed: Only .json files are supported.', 'error' );
+        add_settings_error( 'aicb_options', 'import_failed', __( 'Import failed: Only .json files are supported.', 'ai-chatbot' ), 'error' );
         return;
     }
 
@@ -287,7 +289,7 @@ function aicb_handle_import_settings() {
     $data     = json_decode( $contents, true );
 
     if ( ! is_array( $data ) || ! isset( $data['data'] ) ) {
-        add_settings_error( 'aicb_options', 'import_failed', 'Import failed: Invalid JSON format.', 'error' );
+        add_settings_error( 'aicb_options', 'import_failed', __( 'Import failed: Invalid JSON format.', 'ai-chatbot' ), 'error' );
         return;
     }
 
@@ -300,24 +302,25 @@ function aicb_handle_import_settings() {
         'placeholder', 'footer_text', 'max_tokens', 'rate_limit', 'system_prompt', 'enabled',
         'show_on_all', 'log_retention_days', 'enable_cache', 'cache_duration', 'indexing_mode',
         'indexed_post_types', 'enable_handover', 'handover_apology', 'handover_prompt',
-        'handover_type', 'handover_target', 'handover_btn_text', 'contact_btn_text',
-        'contact_btn_url', 'handover_primary_text', 'handover_secondary_bg',
-        'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
-        'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
-        'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'handover_trigger_phrases', 'show_footer_help_button', 'handover_type', 'handover_target',
+        'handover_btn_text', 'contact_btn_text', 'contact_btn_url', 'handover_primary_text',
+        'handover_secondary_bg', 'handover_secondary_text', 'handover_btn_radius',
+        'always_show_handover_buttons', 'business_name', 'pronoun_perspective', 'chatbot_tone',
+        'chatbot_language_mode', 'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'enable_lead_capture', 'lead_notification_email', 'enable_transcript_export',
     ];
     if ( isset( $import_data['general'] ) && is_array( $import_data['general'] ) ) {
         foreach ( $import_data['general'] as $key => $value ) {
             if ( ! in_array( $key, $general_option_keys, true ) ) continue;
             update_option( 'aicb_' . $key, aicb_sanitize_import_option( $value, $key ) );
         }
-        $imported[] = 'general settings';
+        $imported[] = __( 'general settings', 'ai-chatbot' );
     }
 
     // Import Calendar & Hours (with import-specific sanitization)
     if ( isset( $import_data['calendar'] ) && is_array( $import_data['calendar'] ) ) {
         update_option( 'aicb_calendar_data', aicb_sanitize_import_option( $import_data['calendar'], 'calendar_data' ) );
-        $imported[] = 'calendar & hours';
+        $imported[] = __( 'calendar & hours', 'ai-chatbot' );
     }
 
     // Import Advanced Prompts (with allowlist validation and import-specific sanitization)
@@ -327,7 +330,7 @@ function aicb_handle_import_settings() {
             if ( ! in_array( $key, $prompt_allowlist, true ) ) continue;
             update_option( 'aicb_' . $key, aicb_sanitize_import_option( $value, $key ) );
         }
-        $imported[] = 'advanced prompts';
+        $imported[] = __( 'advanced prompts', 'ai-chatbot' );
     }
 
     // Import Custom Q&A Entries (replace all)
@@ -343,7 +346,7 @@ function aicb_handle_import_settings() {
                 'active'   => isset( $entry['active'] ) ? (int) $entry['active'] : 1,
             ], [ '%s', '%s', '%d' ] );
         }
-        $imported[] = 'custom Q&A entries (' . count( $import_data['qa_entries'] ) . ' items)';
+        $imported[] = sprintf( __( 'custom Q&A entries (%d items)', 'ai-chatbot' ), count( $import_data['qa_entries'] ) );
     }
 
     // Import Custom Model Definitions (replace all custom models)
@@ -376,13 +379,13 @@ function aicb_handle_import_settings() {
             ], [ '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%s', '%d', '%d', '%d' ] );
             $count++;
         }
-        $imported[] = 'custom models (' . $count . ' items)';
+        $imported[] = sprintf( __( 'custom models (%d items)', 'ai-chatbot' ), $count );
     }
 
     if ( empty( $imported ) ) {
-        add_settings_error( 'aicb_options', 'import_nodata', 'Import completed but no recognized data sections were found in the file.', 'warning' );
+        add_settings_error( 'aicb_options', 'import_nodata', __( 'Import completed but no recognized data sections were found in the file.', 'ai-chatbot' ), 'warning' );
     } else {
-        add_settings_error( 'aicb_options', 'import_success', 'Import successful: ' . implode( ', ', $imported ) . ' restored.', 'updated' );
+        add_settings_error( 'aicb_options', 'import_success', sprintf( __( 'Import successful: %s restored.', 'ai-chatbot' ), implode( ', ', $imported ) ), 'updated' );
     }
 }
 
@@ -438,11 +441,21 @@ function aicb_sanitize_import_option( $val, $field ) {
     }
 
     // Handover/custom button text fields
-    if ( in_array( $field, [ 'handover_apology', 'handover_prompt', 'handover_btn_text', 'contact_btn_text', 'handover_primary_text', 'handover_secondary_bg', 'handover_secondary_text' ], true ) ) {
-        return sanitize_text_field( $val );
+    if ( in_array( $field, [ 'handover_apology', 'handover_prompt', 'handover_btn_text', 'contact_btn_text', 'handover_primary_text', 'handover_secondary_bg', 'handover_secondary_text', 'handover_trigger_phrases' ], true ) ) {
+        return sanitize_textarea_field( $val );
     }
     if ( in_array( $field, [ 'contact_btn_url', 'handover_target', 'handover_btn_radius' ], true ) ) {
         return sanitize_text_field( $val );
+    }
+
+    // Lead capture & transcript export fields
+    $lead_boolean_fields = [ 'enable_lead_capture', 'enable_transcript_export', 'show_footer_help_button' ];
+    if ( in_array( $field, $lead_boolean_fields, true ) ) {
+        return (int) ( ! empty( $val ) );
+    }
+    if ( $field === 'lead_notification_email' ) {
+        $email = sanitize_email( $val );
+        return is_email( $email ) ? $email : '';
     }
 
     // Arrays (indexed_post_types)
@@ -454,6 +467,15 @@ function aicb_sanitize_import_option( $val, $field ) {
 }
 
 function aicb_sanitize_specific_option( $val, $field ) {
+    $boolean_fields = [
+        'enable_handover', 'enable_cache', 'enabled', 'show_on_all', 'enable_feedback',
+        'enable_lead_capture', 'enable_transcript_export',
+        'show_footer_help_button', 'always_show_handover_buttons'
+    ];
+    if ( in_array( $field, $boolean_fields, true ) ) {
+        return (int) ( ! empty( $val ) );
+    }
+
     // Guard: preserve existing data when the option wasn't submitted in a form
     if ( $val === null || $val === '' ) {
         return get_option( 'aicb_' . $field, aicb_default_options()[ $field ] ?? '' );
@@ -497,6 +519,16 @@ function aicb_sanitize_specific_option( $val, $field ) {
     if ( in_array( $field, [ 'contact_btn_url', 'handover_target', 'handover_btn_radius' ], true ) ) {
         return sanitize_text_field( $val ); 
     }
+    // Lead capture & transcript export fields
+    $lead_boolean_fields = [ 'enable_lead_capture', 'enable_transcript_export' ];
+    if ( in_array( $field, $lead_boolean_fields, true ) ) {
+        return (int) ( ! empty( $val ) );
+    }
+    if ( $field === 'lead_notification_email' ) {
+        $email = sanitize_email( $val );
+        return is_email( $email ) ? $email : '';
+    }
+
     if ( is_array( $val ) ) {
         return array_map( 'sanitize_text_field', $val );
     }
@@ -508,7 +540,7 @@ function aicb_sanitize_key_field( $val, $pid ) {
     if ( $val === 'XXXXXXXXXXXXXXXX' ) return get_option( 'aicb_key_' . $pid, '' );
     if ( empty( $val ) ) return '';
     if ( ! aicb_has_secure_salts() ) {
-        add_settings_error( 'aicb_options', 'weak_salts_save_error', 'Error: Insecure security salts detected.', 'error' );
+        add_settings_error( 'aicb_options', 'weak_salts_save_error', __( 'Error: Insecure security salts detected.', 'ai-chatbot' ), 'error' );
         return get_option( 'aicb_key_' . $pid, '' );
     }
     return aicb_encrypt( $val );
@@ -517,9 +549,9 @@ function aicb_sanitize_key_field( $val, $pid ) {
 add_action( 'admin_init', 'aicb_handle_manual_cache_flush' );
 function aicb_handle_manual_cache_flush() {
     if ( isset( $_POST['aicb_flush_cache_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_flush_cache_nonce'] ) ), 'aicb_flush_cache' ) ) {
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
         update_option( 'aicb_cache_version', time() );
-        add_settings_error( 'aicb_options', 'cache_flushed', 'All cached page summaries have been successfully invalidated.', 'updated' );
+        add_settings_error( 'aicb_options', 'cache_flushed', __( 'All cached page summaries have been successfully invalidated.', 'ai-chatbot' ), 'updated' );
     }
 }
 
@@ -529,14 +561,14 @@ function aicb_handle_manual_cache_flush() {
 add_action( 'admin_init', 'aicb_handle_manual_prompt_reset' );
 function aicb_handle_manual_prompt_reset() {
     if ( isset( $_POST['aicb_reset_prompts_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_reset_prompts_nonce'] ) ), 'aicb_reset_prompts' ) ) {
-        if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+        if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
         
         $defaults = aicb_default_options();
         $prompt_keys = [ 'prompt_temporal_pivot', 'prompt_tool_instruction', 'prompt_negative_constraints', 'system_prompt' ];
         foreach ( $prompt_keys as $key ) {
             update_option( 'aicb_' . $key, $defaults[ $key ] );
         }
-        add_settings_error( 'aicb_options', 'prompts_reset', 'All AI prompt engineering templates have been successfully reset to default schemas.', 'updated' );
+        add_settings_error( 'aicb_options', 'prompts_reset', __( 'All AI prompt engineering templates have been successfully reset to default schemas.', 'ai-chatbot' ), 'updated' );
     }
 }
 
@@ -582,7 +614,7 @@ function aicb_save_meta_box( $post_id ) {
    ========================================================= */
 
 function aicb_page_dashboard() {
-    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
     global $wpdb;
     $lt = $wpdb->prefix . AICB_LOG_TABLE;
     $total  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $lt" );
@@ -635,7 +667,7 @@ function aicb_page_dashboard() {
 }
 
 function aicb_page_settings() {
-    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
 
     // Retrieve any export error persisted via transient across redirect
     $export_error = get_transient( 'aicb_export_error' );
@@ -652,7 +684,7 @@ function aicb_page_settings() {
 }
 
 function aicb_page_calendar() {
-    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
 
     if ( isset( $_POST['aicb_cal_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_cal_nonce'] ) ), 'aicb_cal_action' ) ) {
         $action   = sanitize_text_field( $_POST['aicb_action'] ?? '' );
@@ -793,7 +825,7 @@ function aicb_page_calendar() {
 }
 
 function aicb_page_qa() {
-    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
     global $wpdb;
     $table = $wpdb->prefix . AICB_QA_TABLE;
 
@@ -825,7 +857,7 @@ function aicb_page_qa() {
 }
 
 function aicb_page_models() {
-    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
     global $wpdb;
     $table = $wpdb->prefix . AICB_MODEL_TABLE;
 
@@ -983,7 +1015,7 @@ function aicb_page_models() {
 }
 
 function aicb_page_logs() {
-    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
     global $wpdb;
     $lt = $wpdb->prefix . AICB_LOG_TABLE;
 
@@ -1048,4 +1080,41 @@ function aicb_page_logs() {
     $conv_pages = ceil( $conv_total / $conv_per );
 
     include AICB_DIR . 'admin/views/logs.php';
+}
+
+function aicb_page_leads() {
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( __( 'Access denied.', 'ai-chatbot' ) );
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LEADS_TABLE;
+
+    // Handle delete action
+    if ( isset( $_POST['aicb_leads_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_leads_nonce'] ) ), 'aicb_leads_action' ) ) {
+        $action = sanitize_text_field( $_POST['aicb_action'] ?? '' );
+        if ( $action === 'delete' && isset( $_POST['lead_id'] ) ) {
+            $wpdb->delete( $table, [ 'id' => (int) $_POST['lead_id'] ], [ '%d' ] );
+            echo '<div class="notice notice-success"><p>Lead deleted.</p></div>';
+        } elseif ( $action === 'mark_read' && isset( $_POST['lead_id'] ) ) {
+            $wpdb->update( $table, [ 'read_status' => 1 ], [ 'id' => (int) $_POST['lead_id'] ], [ '%d' ], [ '%d' ] );
+            echo '<div class="notice notice-success"><p>Lead marked as read.</p></div>';
+        } elseif ( $action === 'mark_unread' && isset( $_POST['lead_id'] ) ) {
+            $wpdb->update( $table, [ 'read_status' => 0 ], [ 'id' => (int) $_POST['lead_id'] ], [ '%d' ], [ '%d' ] );
+            echo '<div class="notice notice-success"><p>Lead marked as unread.</p></div>';
+        } elseif ( $action === 'delete_all' ) {
+            $wpdb->query( "TRUNCATE TABLE {$table}" );
+            echo '<div class="notice notice-success"><p>All leads deleted.</p></div>';
+        }
+    }
+
+    $per_page    = 20;
+    $page        = max( 1, (int)( $_GET['lp'] ?? 1 ) );
+    $offset      = ( $page - 1 ) * $per_page;
+    $total       = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+    $total_pages = max( 1, (int) ceil( $total / $per_page ) );
+    $rows        = $wpdb->get_results( $wpdb->prepare(
+        "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+        $per_page, $offset
+    ) );
+    $unread_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE read_status = 0" );
+
+    include AICB_DIR . 'admin/views/leads.php';
 }
