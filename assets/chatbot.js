@@ -21,8 +21,8 @@
   };
   var btnIcon = ICONS[cfg.icon] || ICONS.chat;
 
-  /* ── Session ID (tab-scoped, not stored) ─────────────── */
-  var sessionId = 'aicb-' + Math.random().toString(36).slice(2, 10);
+  /* ── Session ID (server-issued, stored per-tab for the session) ── */
+  var sessionId = '';
 
   /* ── State ───────────────────────────────────────────── */
   var isOpen           = false;
@@ -34,7 +34,6 @@
   var messages         = [];    // Stores all messages for transcript export
   var leadFormActive   = false; // Whether lead capture form is currently shown
   var transcriptActive = false; // Whether transcript export overlay is currently shown
-  var sessionToken     = '';    // Server-issued HMAC token for session ownership verification
 
   /* ── Build DOM ───────────────────────────────────────── */
   function init() {
@@ -363,9 +362,9 @@
               addHandoverButtons(data.data);
             }
 
-            // Capture session ownership token for transcript export
-            if (data.data.session_token) {
-              sessionToken = data.data.session_token;
+            // Capture server-issued session ID for subsequent requests
+            if (data.data.session_id) {
+              sessionId = data.data.session_id;
             }
           } else {
             var msg = (data.data && data.data.message) ? data.data.message : 'Something went wrong. Please try again.';
@@ -791,12 +790,11 @@
     var hpVal = (document.querySelector('.aicb-honeypot') || {}).value || '';
 
     xhr.send(encodeParams({
-      action:        'aicb_export_transcript',
-      nonce:         cfg.transcriptNonce,
-      email:         emailVal,
-      session_id:    sessionId,
-      session_token: sessionToken,
-      website:       hpVal
+      action:     'aicb_export_transcript',
+      nonce:      cfg.transcriptNonce,
+      email:      emailVal,
+      session_id: sessionId,
+      website:    hpVal
     }));
   }
 

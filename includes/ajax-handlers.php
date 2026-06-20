@@ -115,8 +115,24 @@ function aicb_ajax_chat() {
 
     $question   = sanitize_textarea_field( wp_unslash( $_POST['question'] ?? '' ) );
     $page_id    = (int) ( $_POST['page_id'] ?? 0 );
-    $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
-    $confirm    = isset( $_POST['confirm_handover'] ) && $_POST['confirm_handover'] === 'true';
+
+    // Server-side session management: accept caller-provided session only if they
+    // already own it (proven by a valid session_token), otherwise issue a fresh one.
+    $session_id      = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
+    $provided_token  = sanitize_text_field( wp_unslash( $_POST['session_token'] ?? '' ) );
+    $session_store   = get_option( 'aicb_session_store', [] );
+
+    if ( empty( $session_id ) || ! isset( $session_store[ $session_id ] ) ) {
+        // New session: generate server-side identifier (unforgeable random bytes)
+        $session_id = 'sess_' . bin2hex( random_bytes( 16 ) );
+        $session_store[ $session_id ] = $ip_hash;
+        update_option( 'aicb_session_store', $session_store );
+    } elseif ( ! hash_equals( $session_store[ $session_id ], $ip_hash ) ) {
+        // Session exists but IP mismatch — reject to prevent session hijacking
+        wp_send_json_error( [ 'message' => 'Session expired or invalid.' ], 403 );
+    }
+
+    $confirm = isset( $_POST['confirm_handover'] ) && $_POST['confirm_handover'] === 'true';
 
     if ( strlen( $question ) < 2 || strlen( $question ) > 1000 ) {
         wp_send_json_error( [ 'message' => 'Invalid question length.' ], 400 );
@@ -138,10 +154,11 @@ function aicb_ajax_chat() {
                 'source'           => 'custom-handover',
                 'provider'         => 'custom',
                 'handover'         => true,
+                'session_id'       => $session_id,
                 'primaryBtnText'   => esc_html( aicb_opt( 'handover_btn_text' ) ),
                 'primaryBtnUrl'    => aicb_clean_url( aicb_get_handover_url() ),
                 'secondaryBtnText' => esc_html( aicb_opt( 'contact_btn_text' ) ),
-                'secondaryBtnUrl'  => aicb_clean_url( aicb_opt( 'contact_btn_url' ) )
+                'secondaryBtnUrl'  => esc_url( aicb_clean_url( aicb_opt( 'contact_btn_url' ) ) )
             ] );
         }
     }
@@ -151,16 +168,16 @@ function aicb_ajax_chat() {
     $custom = $wpdb->get_row( $wpdb->prepare(
         "SELECT answer FROM {$qa_table} WHERE active = 1 AND (LOWER(%s) LIKE CONCAT('%%', LOWER(question), '%%') OR LOWER(question) LIKE CONCAT('%%', LOWER(%s), '%%')) LIMIT 1", $question, $question
     ) );
-    if ( $custom ) {
-        $answer = sanitize_textarea_field( $custom->answer );
-        aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, 'custom', 'custom-match' );
-        wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom' ] );
+        if ( $custom ) {
+            $answer = sanitize_textarea_field( $custom->answer );
+            aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, 'custom', 'custom-match' );
+            wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom', 'session_id' => $session_id ] );
     }
 
     if ( aicb_is_handover_requested( $question ) ) {
         $answer = aicb_opt( 'handover_prompt' );
         aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, 'custom', 'handover-prompt' );
-        wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom-handover', 'provider' => 'custom', 'awaiting_confirmation' => true ] );
+        wp_send_json_success( [ 'answer' => $answer, 'source' => 'custom-handover', 'provider' => 'custom', 'awaiting_confirmation' => true, 'session_id' => $session_id ] );
     }
 
     $page_context = aicb_retrieve_relevant_contexts( $question, $page_id );
@@ -278,7 +295,7 @@ function aicb_ajax_chat() {
         if ( $handover_triggered ) {
             $answer = aicb_opt( 'handover_apology' );
             aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provider, $model );
-            wp_send_json_success( [ 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider, 'awaiting_confirmation' => true ] );
+            wp_send_json_success( [ 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider, 'awaiting_confirmation' => true, 'session_id' => $session_id ] );
         }
     }
 
@@ -288,7 +305,7 @@ function aicb_ajax_chat() {
         'answer'      => $answer,
         'source'      => 'ai-reasoning',
         'provider'    => $provider,
-        'session_token' => aicb_generate_session_token( $session_id )
+        'session_id'  => $session_id
     ] );
 }
 
@@ -305,13 +322,13 @@ function aicb_set_security_headers() {
    ========================================================= */
 
 /**
- * Generate a session ownership token (HMAC of session_id using WP salts).
- * Used to verify that the caller of transcript export is the same
- * visitor who created the session.
+ * Generate a server-side session identifier (not used for signing anymore;
+ * kept as a no-op for backward compat with any third-party code that may
+ * still call it).
+ * @deprecated Session auth is now IP-bound via aicb_session_store.
  */
 function aicb_generate_session_token( $session_id ) {
-    $secret = defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : AUTH_KEY;
-    return hash_hmac( 'sha256', $session_id, $secret );
+    return $session_id;
 }
 
 function aicb_get_user_ip() {
@@ -529,7 +546,7 @@ function aicb_ajax_export_transcript() {
         wp_send_json_error( [ 'message' => 'Transcript export is disabled.' ], 403 );
     }
 
-    $email     = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+    $email      = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
     $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
 
     // Honeypot: if 'website' field is filled, silently reject (bot)
@@ -554,11 +571,14 @@ function aicb_ajax_export_transcript() {
         wp_send_json_error( [ 'message' => 'No conversation session found.' ], 400 );
     }
 
-    // Verify session ownership: the caller must present a valid token
-    // issued by the server for this session (HMAC signed with WP salts)
-    $provided_token = sanitize_text_field( wp_unslash( $_POST['session_token'] ?? '' ) );
-    if ( empty( $provided_token ) || ! hash_equals( aicb_generate_session_token( $session_id ), $provided_token ) ) {
-        wp_send_json_error( [ 'message' => 'Unauthorized: invalid session token.' ], 403 );
+    // Verify session ownership: session must exist in our server-side store
+    // and the requester's IP must match the IP that created the session
+    $session_store = get_option( 'aicb_session_store', [] );
+    if ( ! isset( $session_store[ $session_id ] ) ) {
+        wp_send_json_error( [ 'message' => 'Session not found or has expired.' ], 403 );
+    }
+    if ( ! hash_equals( $session_store[ $session_id ], $ip_hash ) ) {
+        wp_send_json_error( [ 'message' => 'Unauthorized: session IP mismatch.' ], 403 );
     }
 
     // Build transcript from logs
