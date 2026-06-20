@@ -34,9 +34,25 @@ function aicb_activate() {
         PRIMARY KEY (id)
     ) $charset;";
 
+    $leads_table_name = $wpdb->prefix . AICB_LEADS_TABLE;
+    $leads = "CREATE TABLE IF NOT EXISTS {$leads_table_name} (
+        id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        name        VARCHAR(255)    NOT NULL DEFAULT '',
+        email       VARCHAR(255)    NOT NULL DEFAULT '',
+        message     TEXT,
+        session_id  VARCHAR(64)     NOT NULL DEFAULT '',
+        page_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        read_status TINYINT(1)      NOT NULL DEFAULT 0,
+        created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY read_status (read_status),
+        KEY created_at (created_at)
+    ) $charset;";
+
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta( $logs );
     dbDelta( $qa );
+    dbDelta( $leads );
 
     // Create models table and seed from JSON
     aicb_maybe_create_models_table();
@@ -176,6 +192,7 @@ function aicb_uninstall() {
         $wpdb->prefix . AICB_LOG_TABLE,
         $wpdb->prefix . AICB_QA_TABLE,
         $wpdb->prefix . AICB_MODEL_TABLE,
+        $wpdb->prefix . AICB_LEADS_TABLE,
     ];
     foreach ( $tables as $table ) {
         $wpdb->query( "DROP TABLE IF EXISTS {$table}" );
@@ -195,6 +212,34 @@ function aicb_maybe_add_feedback_column() {
     }
 }
 add_action( 'admin_init', 'aicb_maybe_add_feedback_column' );
+
+/**
+ * One-time database migration: create leads table if missing for existing installations.
+ */
+function aicb_maybe_create_leads_table() {
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LEADS_TABLE;
+    $table_exists = $wpdb->get_var( $wpdb->prepare( "SHOW TABLES LIKE %s", $table ) );
+    if ( ! $table_exists ) {
+        $charset = $wpdb->get_charset_collate();
+        $sql = "CREATE TABLE IF NOT EXISTS {$table} (
+            id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name        VARCHAR(255)    NOT NULL DEFAULT '',
+            email       VARCHAR(255)    NOT NULL DEFAULT '',
+            message     TEXT,
+            session_id  VARCHAR(64)     NOT NULL DEFAULT '',
+            page_id     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            read_status TINYINT(1)      NOT NULL DEFAULT 0,
+            created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY read_status (read_status),
+            KEY created_at (created_at)
+        ) {$charset};";
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        dbDelta( $sql );
+    }
+}
+add_action( 'admin_init', 'aicb_maybe_create_leads_table' );
 
 /**
  * Create or append logs to custom database tables.

@@ -31,6 +31,9 @@
   var cooldownTimer    = null;  // Cooldown after error to prevent rapid re-sends
   var isCooldown       = false; // Whether cooldown is active
   var cooldownDuration = 5000;  // Cooldown duration in milliseconds (5 seconds)
+  var messages         = [];    // Stores all messages for transcript export
+  var leadFormActive   = false; // Whether lead capture form is currently shown
+  var transcriptActive = false; // Whether transcript export overlay is currently shown
 
   /* ── Build DOM ───────────────────────────────────────── */
   function init() {
@@ -191,9 +194,36 @@
       }
     }
 
-    /* Dynamic Footer */
+    /* Lead capture contact button area (shown when handover buttons appear) */
+    /* This will be dynamically added via addLeadCaptureButton() */
+
+    /* Dynamic Footer with transcript export button */
+    var footerEl = null;
     if (cfg.footerText && cfg.footerText.trim() !== '') {
-      win.appendChild(el('div', { id: 'aicb-footer' }, cfg.footerText));
+      footerEl = el('div', { id: 'aicb-footer' }, cfg.footerText);
+    }
+
+    /* Transcript export link in footer */
+    if (cfg.enableTranscript && cfg.transcriptNonce) {
+      var transcriptLink = el('button', {
+        'id': 'aicb-transcript-btn',
+        'class': 'aicb-transcript-link',
+        'aria-label': 'Email conversation transcript',
+        'type': 'button'
+      }, '📧 Email transcript');
+      transcriptLink.addEventListener('click', showTranscriptOverlay);
+
+      if (footerEl) {
+        footerEl.appendChild(el('span', { 'class': 'aicb-footer-sep' }, ' · '));
+        footerEl.appendChild(transcriptLink);
+      } else {
+        footerEl = el('div', { 'id': 'aicb-footer' });
+        footerEl.appendChild(transcriptLink);
+      }
+    }
+
+    if (footerEl) {
+      win.appendChild(footerEl);
     }
 
     // Append to live DOM FIRST [1.8.7] [3]
@@ -227,6 +257,9 @@
     var win = document.getElementById('aicb-window');
     var launcher = document.getElementById('aicb-toggle') || document.getElementById('aicb-tab');
     win.setAttribute('hidden', 'true');
+    /* Close any open overlays */
+    if (leadFormActive) hideLeadForm();
+    if (transcriptActive) hideTranscriptOverlay();
     if (launcher) {
       launcher.setAttribute('aria-expanded', 'false');
       launcher.focus();
@@ -397,6 +430,337 @@
     xhr.send(params);
   }
 
+  /* ── Lead Capture Form ───────────────────────────────── */
+  function addLeadCaptureButton() {
+    if (!cfg.enableLeadCapture || !cfg.leadNonce) return;
+    if (leadFormActive) return;
+
+    var msgs = document.getElementById('aicb-messages');
+    if (!msgs) return;
+
+    var container = el('div', {
+      'class': 'aicb-lead-container',
+      'role': 'group',
+      'aria-label': 'Leave a message'
+    });
+
+    var leadBtn = el('button', {
+      'class': 'aicb-btn aicb-btn-secondary',
+      'type': 'button',
+      'aria-label': 'Leave us a message'
+    }, '✉️ Leave a message');
+    leadBtn.addEventListener('click', showLeadForm);
+    container.appendChild(leadBtn);
+    msgs.appendChild(container);
+    scrollToBottom();
+  }
+
+  function showLeadForm() {
+    if (leadFormActive) return;
+    leadFormActive = true;
+
+    var msgs = document.getElementById('aicb-messages');
+    if (!msgs) return;
+
+    var formContainer = el('div', {
+      'class': 'aicb-lead-form',
+      'role': 'form',
+      'aria-label': 'Contact form'
+    });
+
+    var closeForm = el('button', {
+      'class': 'aicb-lead-close',
+      'type': 'button',
+      'aria-label': 'Close form'
+    }, '×');
+    closeForm.addEventListener('click', hideLeadForm);
+    formContainer.appendChild(closeForm);
+
+    var nameLabel = el('label', { 'class': 'aicb-lead-label' }, 'Your Name *');
+    var nameInput = el('input', {
+      'class': 'aicb-lead-input',
+      'type': 'text',
+      'id': 'aicb-lead-name',
+      'placeholder': 'Your name',
+      'aria-required': 'true',
+      'autocomplete': 'name'
+    });
+    formContainer.appendChild(nameLabel);
+    formContainer.appendChild(nameInput);
+
+    var emailLabel = el('label', { 'class': 'aicb-lead-label' }, 'Your Email *');
+    var emailInput = el('input', {
+      'class': 'aicb-lead-input',
+      'type': 'email',
+      'id': 'aicb-lead-email',
+      'placeholder': 'your@email.com',
+      'aria-required': 'true',
+      'autocomplete': 'email'
+    });
+    formContainer.appendChild(emailLabel);
+    formContainer.appendChild(emailInput);
+
+    var msgLabel = el('label', { 'class': 'aicb-lead-label' }, 'Message (optional)');
+    var msgInput = el('textarea', {
+      'class': 'aicb-lead-input aicb-lead-textarea',
+      'id': 'aicb-lead-message',
+      'placeholder': 'How can we help you?',
+      'maxlength': '2000',
+      'rows': '3'
+    });
+    formContainer.appendChild(msgLabel);
+    formContainer.appendChild(msgInput);
+
+    /* Honeypot field (hidden from users, bots fill it) */
+    var hp = el('input', {
+      'type': 'text',
+      'name': 'website',
+      'class': 'aicb-honeypot',
+      'tabindex': '-1',
+      'autocomplete': 'off'
+    });
+    formContainer.appendChild(hp);
+
+    var submitBtn = el('button', {
+      'class': 'aicb-btn aicb-btn-primary',
+      'type': 'button',
+      'aria-label': 'Send message'
+    }, 'Send Message');
+    submitBtn.addEventListener('click', submitLead);
+    formContainer.appendChild(submitBtn);
+
+    var statusMsg = el('div', { 'class': 'aicb-lead-status' });
+    formContainer.appendChild(statusMsg);
+
+    msgs.appendChild(formContainer);
+    scrollToBottom();
+    nameInput.focus();
+  }
+
+  function hideLeadForm() {
+    leadFormActive = false;
+    var form = document.querySelector('.aicb-lead-form');
+    if (form && form.parentNode) form.parentNode.removeChild(form);
+  }
+
+  function submitLead() {
+    var name = document.getElementById('aicb-lead-name');
+    var email = document.getElementById('aicb-lead-email');
+    var message = document.getElementById('aicb-lead-message');
+    var statusEl = document.querySelector('.aicb-lead-status');
+    var submitBtn = document.querySelector('.aicb-lead-form .aicb-btn-primary');
+
+    if (!name || !email || !statusEl || !submitBtn) return;
+
+    var nameVal = name.value.trim();
+    var emailVal = email.value.trim();
+    var msgVal = message ? message.value.trim() : '';
+
+    if (!nameVal || !emailVal) {
+      statusEl.textContent = 'Please fill in your name and email.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      return;
+    }
+
+    if (emailVal.indexOf('@') === -1 || emailVal.indexOf('.') === -1) {
+      statusEl.textContent = 'Please enter a valid email address.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', cfg.ajaxUrl, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            statusEl.textContent = 'Thank you! We will get back to you soon.';
+            statusEl.className = 'aicb-lead-status aicb-lead-success';
+            name.value = '';
+            email.value = '';
+            if (message) message.value = '';
+            submitBtn.textContent = 'Sent ✓';
+            setTimeout(function () {
+              hideLeadForm();
+            }, 2000);
+          } else {
+            statusEl.textContent = data.data && data.data.message ? data.data.message : 'Submission failed. Please try again.';
+            statusEl.className = 'aicb-lead-status aicb-lead-error';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Send Message';
+          }
+        } catch (e) {
+          statusEl.textContent = 'An error occurred. Please try again.';
+          statusEl.className = 'aicb-lead-status aicb-lead-error';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send Message';
+        }
+      } else if (xhr.status === 429) {
+        statusEl.textContent = 'Too many submissions. Please try again later.';
+        statusEl.className = 'aicb-lead-status aicb-lead-error';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message';
+      } else {
+        statusEl.textContent = 'Server error. Please try again.';
+        statusEl.className = 'aicb-lead-status aicb-lead-error';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message';
+      }
+    };
+
+    xhr.send(encodeParams({
+      action:     'aicb_lead_submit',
+      nonce:      cfg.leadNonce,
+      name:       nameVal,
+      email:      emailVal,
+      message:    msgVal,
+      session_id: sessionId,
+      page_id:    cfg.pageId || 0
+    }));
+  }
+
+  /* ── Transcript Export ───────────────────────────────── */
+  function showTranscriptOverlay() {
+    if (transcriptActive) return;
+    transcriptActive = true;
+
+    var msgs = document.getElementById('aicb-messages');
+    if (!msgs) return;
+
+    var overlay = el('div', {
+      'class': 'aicb-transcript-overlay',
+      'role': 'dialog',
+      'aria-label': 'Email conversation transcript'
+    });
+
+    var closeOverlay = el('button', {
+      'class': 'aicb-lead-close',
+      'type': 'button',
+      'aria-label': 'Close'
+    }, '×');
+    closeOverlay.addEventListener('click', hideTranscriptOverlay);
+    overlay.appendChild(closeOverlay);
+
+    var title = el('p', { 'class': 'aicb-transcript-title' }, 'Enter your email to receive a copy of this conversation:');
+    overlay.appendChild(title);
+
+    var emailInput = el('input', {
+      'class': 'aicb-lead-input',
+      'type': 'email',
+      'id': 'aicb-transcript-email',
+      'placeholder': 'your@email.com',
+      'aria-required': 'true',
+      'autocomplete': 'email'
+    });
+    overlay.appendChild(emailInput);
+
+    /* Honeypot */
+    var hp = el('input', {
+      'type': 'text',
+      'name': 'website',
+      'class': 'aicb-honeypot',
+      'tabindex': '-1',
+      'autocomplete': 'off'
+    });
+    overlay.appendChild(hp);
+
+    var sendBtn = el('button', {
+      'class': 'aicb-btn aicb-btn-primary',
+      'type': 'button',
+      'aria-label': 'Send transcript'
+    }, 'Send Transcript');
+    sendBtn.addEventListener('click', submitTranscript);
+    overlay.appendChild(sendBtn);
+
+    var statusMsg = el('div', { 'class': 'aicb-lead-status' });
+    overlay.appendChild(statusMsg);
+
+    msgs.appendChild(overlay);
+    scrollToBottom();
+    emailInput.focus();
+  }
+
+  function hideTranscriptOverlay() {
+    transcriptActive = false;
+    var overlay = document.querySelector('.aicb-transcript-overlay');
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  function submitTranscript() {
+    var emailInput = document.getElementById('aicb-transcript-email');
+    var statusEl = document.querySelector('.aicb-transcript-overlay .aicb-lead-status');
+    var sendBtn = document.querySelector('.aicb-transcript-overlay .aicb-btn-primary');
+
+    if (!emailInput || !statusEl || !sendBtn) return;
+
+    var emailVal = emailInput.value.trim();
+
+    if (!emailVal || emailVal.indexOf('@') === -1 || emailVal.indexOf('.') === -1) {
+      statusEl.textContent = 'Please enter a valid email address.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', cfg.ajaxUrl, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data.success) {
+            statusEl.textContent = 'Transcript sent! Please check your email.';
+            statusEl.className = 'aicb-lead-status aicb-lead-success';
+            emailInput.value = '';
+            sendBtn.textContent = 'Sent ✓';
+            setTimeout(function () {
+              hideTranscriptOverlay();
+            }, 2500);
+          } else {
+            statusEl.textContent = data.data && data.data.message ? data.data.message : 'Failed. Please try again.';
+            statusEl.className = 'aicb-lead-status aicb-lead-error';
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send Transcript';
+          }
+        } catch (e) {
+          statusEl.textContent = 'An error occurred. Please try again.';
+          statusEl.className = 'aicb-lead-status aicb-lead-error';
+          sendBtn.disabled = false;
+          sendBtn.textContent = 'Send Transcript';
+        }
+      } else if (xhr.status === 429) {
+        statusEl.textContent = 'Too many requests. Please try again later.';
+        statusEl.className = 'aicb-lead-status aicb-lead-error';
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Transcript';
+      } else {
+        statusEl.textContent = 'Server error. Please try again.';
+        statusEl.className = 'aicb-lead-status aicb-lead-error';
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send Transcript';
+      }
+    };
+
+    xhr.send(encodeParams({
+      action:     'aicb_export_transcript',
+      nonce:      cfg.transcriptNonce,
+      email:      emailVal,
+      session_id: sessionId
+    }));
+  }
+
   /* ── Helpers ─────────────────────────────────────────── */
   function addMsg(text, type) {
     var msgs = document.getElementById('aicb-messages');
@@ -447,6 +811,11 @@
     if (container.children.length > 0) {
       msgs.appendChild(container);
       scrollToBottom();
+    }
+
+    // Add lead capture button after handover buttons if enabled
+    if (cfg.enableLeadCapture && cfg.leadNonce) {
+      addLeadCaptureButton();
     }
   }
 

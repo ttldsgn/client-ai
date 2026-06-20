@@ -255,6 +255,42 @@
         </table>
     </div>
 
+    <!-- ── LEAD CAPTURE & TRANSCRIPT ── -->
+    <div class="aicb-section">
+        <h2>Lead Capture & Transcript Export</h2>
+        <table class="form-table">
+            <tr>
+                <th>Enable Lead Capture</th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="aicb_enable_lead_capture" value="1" <?= checked( aicb_opt('enable_lead_capture'), 1 ) ?> />
+                        Show a contact form in the chat when handover is confirmed (visitor can leave name & email)
+                    </label>
+                    <p class="description">Leads are stored in the database and can be viewed under the <strong>Leads</strong> menu.</p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="aicb_lead_notification_email">Notification Email</label></th>
+                <td>
+                    <input type="email" id="aicb_lead_notification_email" name="aicb_lead_notification_email"
+                           value="<?= esc_attr( aicb_opt('lead_notification_email') ) ?>" class="regular-text"
+                           placeholder="Optional: admin@example.com" />
+                    <p class="description">If set, an email notification will be sent when a new lead is submitted. Leave blank to only store in the database.</p>
+                </td>
+            </tr>
+            <tr>
+                <th>Enable Transcript Export</th>
+                <td>
+                    <label>
+                        <input type="checkbox" name="aicb_enable_transcript_export" value="1" <?= checked( aicb_opt('enable_transcript_export'), 1 ) ?> />
+                        Show an "Email transcript" button in the chat footer so visitors can email themselves a copy of the conversation
+                    </label>
+                    <p class="description">Conversation history is retrieved from the chat logs database.</p>
+                </td>
+            </tr>
+        </table>
+    </div>
+
     <!-- ── AI PERSONA & IDENTITY ── -->
     <div class="aicb-section">
         <h2>AI Persona & Identity</h2>

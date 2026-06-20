@@ -46,6 +46,9 @@ function aicb_enqueue_frontend() {
 
     $enable_feedback = aicb_opt( 'enable_feedback' );
 
+    $enable_lead_capture = aicb_opt( 'enable_lead_capture' );
+    $enable_transcript   = aicb_opt( 'enable_transcript_export' );
+
     wp_localize_script( 'aicb-script', 'aicbData', [
         'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
         'nonce'             => wp_create_nonce( 'aicb_chat' ),
@@ -66,6 +69,10 @@ function aicb_enqueue_frontend() {
         'primaryBtnUrl'     => aicb_clean_url( aicb_get_handover_url() ),
         'secondaryBtnText'  => esc_html( aicb_opt( 'contact_btn_text' ) ),
         'secondaryBtnUrl'   => aicb_clean_url( aicb_opt( 'contact_btn_url' ) ),
+        'enableLeadCapture' => $enable_lead_capture ? true : false,
+        'leadNonce'         => $enable_lead_capture ? wp_create_nonce( 'aicb_lead' ) : '',
+        'enableTranscript'  => $enable_transcript ? true : false,
+        'transcriptNonce'   => $enable_transcript ? wp_create_nonce( 'aicb_export_transcript' ) : '',
     ] );
 }
 
@@ -410,4 +417,156 @@ function aicb_ajax_feedback() {
     }
 
     wp_send_json_success( [ 'message' => 'Feedback recorded.' ] );
+}
+
+/* =========================================================
+   6. LEAD CAPTURE AJAX ENDPOINT
+   ========================================================= */
+
+add_action( 'wp_ajax_aicb_lead_submit',        'aicb_ajax_lead_submit' );
+add_action( 'wp_ajax_nopriv_aicb_lead_submit', 'aicb_ajax_lead_submit' );
+function aicb_ajax_lead_submit() {
+    aicb_set_security_headers();
+    check_ajax_referer( 'aicb_lead', 'nonce' );
+
+    if ( ! aicb_opt( 'enable_lead_capture' ) ) {
+        wp_send_json_error( [ 'message' => 'Lead capture is disabled.' ], 403 );
+    }
+
+    $name       = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+    $email      = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+    $message    = sanitize_textarea_field( wp_unslash( $_POST['message'] ?? '' ) );
+    $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
+    $page_id    = (int) ( $_POST['page_id'] ?? 0 );
+
+    // Honeypot: if 'website' field is filled, silently reject (bot)
+    if ( ! empty( $_POST['website'] ) ) {
+        wp_send_json_success( [ 'message' => 'Thank you!' ] );
+    }
+
+    // Rate limiting per IP
+    $ip_hash = hash( 'sha256', aicb_get_user_ip() );
+    $rate_key = 'aicb_lead_rate_' . $ip_hash;
+    $hits     = (int) get_transient( $rate_key );
+    if ( $hits >= 3 ) {
+        wp_send_json_error( [ 'message' => 'Too many submissions. Please try again later.' ], 429 );
+    }
+    set_transient( $rate_key, $hits + 1, HOUR_IN_SECONDS );
+
+    if ( empty( $name ) || empty( $email ) || ! is_email( $email ) ) {
+        wp_send_json_error( [ 'message' => 'Please provide a valid name and email address.' ], 400 );
+    }
+
+    if ( strlen( $name ) > 255 || strlen( $email ) > 255 ) {
+        wp_send_json_error( [ 'message' => 'Invalid input length.' ], 400 );
+    }
+
+    if ( strlen( $message ) > 2000 ) {
+        $message = substr( $message, 0, 2000 );
+    }
+
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LEADS_TABLE;
+
+    $inserted = $wpdb->insert(
+        $table,
+        [
+            'name'       => $name,
+            'email'      => $email,
+            'message'    => $message,
+            'session_id' => $session_id,
+            'page_id'    => $page_id,
+            'created_at' => current_time( 'mysql' ),
+        ],
+        [ '%s', '%s', '%s', '%s', '%d', '%s' ]
+    );
+
+    if ( false === $inserted ) {
+        wp_send_json_error( [ 'message' => 'Database error.' ], 500 );
+    }
+
+    // Optional email notification
+    $notification_email = aicb_opt( 'lead_notification_email' );
+    if ( ! empty( $notification_email ) && is_email( $notification_email ) ) {
+        $subject = sprintf( 'New lead from %s', get_bloginfo( 'name' ) );
+        $body    = "Name: {$name}\nEmail: {$email}\nMessage: {$message}\nPage ID: {$page_id}\nSession: {$session_id}\n";
+        wp_mail( $notification_email, $subject, $body );
+    }
+
+    wp_send_json_success( [ 'message' => 'Thank you! We will get back to you soon.' ] );
+}
+
+/* =========================================================
+   7. TRANSCRIPT EXPORT AJAX ENDPOINT
+   ========================================================= */
+
+add_action( 'wp_ajax_aicb_export_transcript',        'aicb_ajax_export_transcript' );
+add_action( 'wp_ajax_nopriv_aicb_export_transcript', 'aicb_ajax_export_transcript' );
+function aicb_ajax_export_transcript() {
+    aicb_set_security_headers();
+    check_ajax_referer( 'aicb_export_transcript', 'nonce' );
+
+    if ( ! aicb_opt( 'enable_transcript_export' ) ) {
+        wp_send_json_error( [ 'message' => 'Transcript export is disabled.' ], 403 );
+    }
+
+    $email     = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+    $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
+
+    // Honeypot: if 'website' field is filled, silently reject (bot)
+    if ( ! empty( $_POST['website'] ) ) {
+        wp_send_json_success( [ 'message' => 'Transcript sent!' ] );
+    }
+
+    // Rate limiting per IP
+    $ip_hash = hash( 'sha256', aicb_get_user_ip() );
+    $rate_key = 'aicb_transcript_rate_' . $ip_hash;
+    $hits     = (int) get_transient( $rate_key );
+    if ( $hits >= 2 ) {
+        wp_send_json_error( [ 'message' => 'Too many requests. Please try again later.' ], 429 );
+    }
+    set_transient( $rate_key, $hits + 1, HOUR_IN_SECONDS );
+
+    if ( empty( $email ) || ! is_email( $email ) ) {
+        wp_send_json_error( [ 'message' => 'Please provide a valid email address.' ], 400 );
+    }
+
+    if ( empty( $session_id ) ) {
+        wp_send_json_error( [ 'message' => 'No conversation session found.' ], 400 );
+    }
+
+    // Build transcript from logs
+    global $wpdb;
+    $lt = $wpdb->prefix . AICB_LOG_TABLE;
+    $messages = $wpdb->get_results( $wpdb->prepare(
+        "SELECT question, answer, created_at FROM {$lt} WHERE session_id = %s ORDER BY id ASC",
+        $session_id
+    ) );
+
+    if ( empty( $messages ) ) {
+        wp_send_json_error( [ 'message' => 'No conversation history found for this session.' ], 404 );
+    }
+
+    $site_name = get_bloginfo( 'name' );
+    $transcript = "Conversation with {$site_name}\n";
+    $transcript .= str_repeat( '=', 40 ) . "\n\n";
+
+    foreach ( $messages as $msg ) {
+        $time = $msg->created_at ? date( 'M j, Y g:i A', strtotime( $msg->created_at ) ) : '';
+        $transcript .= "[{$time}]\n";
+        $transcript .= "You: {$msg->question}\n";
+        $transcript .= "Bot: {$msg->answer}\n\n";
+    }
+
+    $transcript .= str_repeat( '=', 40 ) . "\n";
+    $transcript .= "Exported from {$site_name}\n";
+
+    $subject = sprintf( 'Your conversation with %s', $site_name );
+    $sent = wp_mail( $email, $subject, $transcript );
+
+    if ( ! $sent ) {
+        wp_send_json_error( [ 'message' => 'Failed to send email. Please try again.' ], 500 );
+    }
+
+    wp_send_json_success( [ 'message' => 'Transcript sent! Please check your email.' ] );
 }

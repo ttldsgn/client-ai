@@ -10,6 +10,7 @@ function aicb_admin_menu() {
     add_submenu_page( 'ai-chatbot', 'Custom Q&A', 'Custom Q&A', 'manage_options', 'ai-chatbot-qa',          'aicb_page_qa'        );
     add_submenu_page( 'ai-chatbot', 'Models',     'Models',     'manage_options', 'ai-chatbot-models',       'aicb_page_models'    );
     add_submenu_page( 'ai-chatbot', 'Chat Logs',  'Chat Logs',  'manage_options', 'ai-chatbot-logs',        'aicb_page_logs'      );
+    add_submenu_page( 'ai-chatbot', 'Leads',      'Leads',      'manage_options', 'ai-chatbot-leads',       'aicb_page_leads'     );
 }
 
 add_action( 'admin_head', 'aicb_admin_styles' );
@@ -195,6 +196,7 @@ function aicb_handle_export_settings() {
         'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
         'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
         'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'enable_lead_capture', 'lead_notification_email', 'enable_transcript_export',
     ];
 
     if ( $export_general ) {
@@ -305,6 +307,7 @@ function aicb_handle_import_settings() {
         'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
         'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
         'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'enable_lead_capture', 'lead_notification_email', 'enable_transcript_export',
     ];
     if ( isset( $import_data['general'] ) && is_array( $import_data['general'] ) ) {
         foreach ( $import_data['general'] as $key => $value ) {
@@ -1048,4 +1051,41 @@ function aicb_page_logs() {
     $conv_pages = ceil( $conv_total / $conv_per );
 
     include AICB_DIR . 'admin/views/logs.php';
+}
+
+function aicb_page_leads() {
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Access denied.' );
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LEADS_TABLE;
+
+    // Handle delete action
+    if ( isset( $_POST['aicb_leads_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['aicb_leads_nonce'] ) ), 'aicb_leads_action' ) ) {
+        $action = sanitize_text_field( $_POST['aicb_action'] ?? '' );
+        if ( $action === 'delete' && isset( $_POST['lead_id'] ) ) {
+            $wpdb->delete( $table, [ 'id' => (int) $_POST['lead_id'] ], [ '%d' ] );
+            echo '<div class="notice notice-success"><p>Lead deleted.</p></div>';
+        } elseif ( $action === 'mark_read' && isset( $_POST['lead_id'] ) ) {
+            $wpdb->update( $table, [ 'read_status' => 1 ], [ 'id' => (int) $_POST['lead_id'] ], [ '%d' ], [ '%d' ] );
+            echo '<div class="notice notice-success"><p>Lead marked as read.</p></div>';
+        } elseif ( $action === 'mark_unread' && isset( $_POST['lead_id'] ) ) {
+            $wpdb->update( $table, [ 'read_status' => 0 ], [ 'id' => (int) $_POST['lead_id'] ], [ '%d' ], [ '%d' ] );
+            echo '<div class="notice notice-success"><p>Lead marked as unread.</p></div>';
+        } elseif ( $action === 'delete_all' ) {
+            $wpdb->query( "TRUNCATE TABLE {$table}" );
+            echo '<div class="notice notice-success"><p>All leads deleted.</p></div>';
+        }
+    }
+
+    $per_page    = 20;
+    $page        = max( 1, (int)( $_GET['lp'] ?? 1 ) );
+    $offset      = ( $page - 1 ) * $per_page;
+    $total       = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
+    $total_pages = max( 1, (int) ceil( $total / $per_page ) );
+    $rows        = $wpdb->get_results( $wpdb->prepare(
+        "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+        $per_page, $offset
+    ) );
+    $unread_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE read_status = 0" );
+
+    include AICB_DIR . 'admin/views/leads.php';
 }

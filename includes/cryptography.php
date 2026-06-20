@@ -65,6 +65,11 @@ function aicb_default_options() {
         'chatbot_language'        => '',
         // Feedback
         'enable_feedback'         => 0,
+        // Lead Capture
+        'enable_lead_capture'     => 1,
+        'lead_notification_email' => '',
+        // Transcript Export
+        'enable_transcript_export' => 1,
     ];
 }
 
