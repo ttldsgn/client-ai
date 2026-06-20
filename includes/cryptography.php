@@ -66,10 +66,10 @@ function aicb_default_options() {
         // Feedback
         'enable_feedback'         => 0,
         // Lead Capture
-        'enable_lead_capture'     => 1,
+        'enable_lead_capture'     => 0,
         'lead_notification_email' => '',
         // Transcript Export
-        'enable_transcript_export' => 1,
+        'enable_transcript_export' => 0,
     ];
 }
 

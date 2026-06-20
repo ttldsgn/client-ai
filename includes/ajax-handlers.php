@@ -283,7 +283,13 @@ function aicb_ajax_chat() {
     }
 
     $log_id = aicb_log( $session_id, $question, $answer, $page_id, $ip_hash, $provider, $model );
-    wp_send_json_success( [ 'log_id' => $log_id, 'answer' => $answer, 'source' => 'ai-reasoning', 'provider' => $provider ] );
+    wp_send_json_success( [
+        'log_id'      => $log_id,
+        'answer'      => $answer,
+        'source'      => 'ai-reasoning',
+        'provider'    => $provider,
+        'session_token' => aicb_generate_session_token( $session_id )
+    ] );
 }
 
 function aicb_set_security_headers() {
@@ -298,13 +304,25 @@ function aicb_set_security_headers() {
    4. CORE UTILITY HELPERS
    ========================================================= */
 
+/**
+ * Generate a session ownership token (HMAC of session_id using WP salts).
+ * Used to verify that the caller of transcript export is the same
+ * visitor who created the session.
+ */
+function aicb_generate_session_token( $session_id ) {
+    $secret = defined( 'SECURE_AUTH_KEY' ) ? SECURE_AUTH_KEY : AUTH_KEY;
+    return hash_hmac( 'sha256', $session_id, $secret );
+}
+
 function aicb_get_user_ip() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
-        $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
-    } elseif ( defined( 'AICB_TRUST_PROXY' ) && AICB_TRUST_PROXY && ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-        $ips = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
-        $ip  = trim( $ips[0] );
+    if ( defined( 'AICB_TRUST_PROXY' ) && AICB_TRUST_PROXY ) {
+        if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+            $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
+        } elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+            $ips = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
+            $ip = trim( $ips[0] );
+        }
     }
     return filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : 'unknown';
 }
@@ -488,8 +506,9 @@ function aicb_ajax_lead_submit() {
     // Optional email notification
     $notification_email = aicb_opt( 'lead_notification_email' );
     if ( ! empty( $notification_email ) && is_email( $notification_email ) ) {
+        $page_title = $page_id ? get_the_title( $page_id ) : 'Unknown';
         $subject = sprintf( 'New lead from %s', get_bloginfo( 'name' ) );
-        $body    = "Name: {$name}\nEmail: {$email}\nMessage: {$message}\nPage ID: {$page_id}\nSession: {$session_id}\n";
+        $body    = "Name: {$name}\nEmail: {$email}\nMessage: {$message}\nPage: {$page_title}\nSession: {$session_id}\n";
         wp_mail( $notification_email, $subject, $body );
     }
 
@@ -533,6 +552,13 @@ function aicb_ajax_export_transcript() {
 
     if ( empty( $session_id ) ) {
         wp_send_json_error( [ 'message' => 'No conversation session found.' ], 400 );
+    }
+
+    // Verify session ownership: the caller must present a valid token
+    // issued by the server for this session (HMAC signed with WP salts)
+    $provided_token = sanitize_text_field( wp_unslash( $_POST['session_token'] ?? '' ) );
+    if ( empty( $provided_token ) || ! hash_equals( aicb_generate_session_token( $session_id ), $provided_token ) ) {
+        wp_send_json_error( [ 'message' => 'Unauthorized: invalid session token.' ], 403 );
     }
 
     // Build transcript from logs

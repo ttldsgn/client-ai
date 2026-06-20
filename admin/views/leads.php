@@ -42,8 +42,8 @@
                         </td>
                         <td><strong><?php echo esc_html( $lead->name ); ?></strong></td>
                         <td><a href="mailto:<?php echo esc_attr( $lead->email ); ?>"><?php echo esc_html( $lead->email ); ?></a></td>
-                        <td><?php echo esc_html( mb_substr( $lead->message, 0, 120 ) . ( mb_strlen( $lead->message ) > 120 ? '…' : '' ) ); ?></td>
-                        <td><?php echo esc_html( date( 'M j, Y g:i A', strtotime( $lead->created_at ) ) ); ?></td>
+                        <td><?php echo esc_html( wp_html_excerpt( $lead->message, 120 ) ); ?></td>
+                        <td><?php echo esc_html( wp_date( 'M j, Y g:i A', strtotime( $lead->created_at ) ) ); ?></td>
                         <td>
                             <form method="post" style="display:inline;">
                                 <?php wp_nonce_field( 'aicb_leads_action', 'aicb_leads_nonce' ); ?>

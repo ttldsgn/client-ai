@@ -214,6 +214,21 @@ function aicb_maybe_add_feedback_column() {
 add_action( 'admin_init', 'aicb_maybe_add_feedback_column' );
 
 /**
+ * One-time database migration: add index on session_id to aicb_logs for faster transcript lookups.
+ */
+function aicb_maybe_add_session_id_index() {
+    global $wpdb;
+    $table = $wpdb->prefix . AICB_LOG_TABLE;
+    // Check if the index already exists before creating it
+    $index_name = 'session_id';
+    $has_index = $wpdb->get_results( $wpdb->prepare( "SHOW INDEX FROM {$table} WHERE Key_name = %s", $index_name ) );
+    if ( empty( $has_index ) ) {
+        $wpdb->query( "ALTER TABLE {$table} ADD INDEX session_id (session_id)" );
+    }
+}
+add_action( 'admin_init', 'aicb_maybe_add_session_id_index' );
+
+/**
  * One-time database migration: create leads table if missing for existing installations.
  */
 function aicb_maybe_create_leads_table() {

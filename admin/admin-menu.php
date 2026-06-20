@@ -448,6 +448,16 @@ function aicb_sanitize_import_option( $val, $field ) {
         return sanitize_text_field( $val );
     }
 
+    // Lead capture & transcript export fields
+    $lead_boolean_fields = [ 'enable_lead_capture', 'enable_transcript_export' ];
+    if ( in_array( $field, $lead_boolean_fields, true ) ) {
+        return (int) ( ! empty( $val ) );
+    }
+    if ( $field === 'lead_notification_email' ) {
+        $email = sanitize_email( $val );
+        return is_email( $email ) ? $email : '';
+    }
+
     // Arrays (indexed_post_types)
     if ( is_array( $val ) ) {
         return array_map( 'sanitize_text_field', $val );
@@ -500,6 +510,16 @@ function aicb_sanitize_specific_option( $val, $field ) {
     if ( in_array( $field, [ 'contact_btn_url', 'handover_target', 'handover_btn_radius' ], true ) ) {
         return sanitize_text_field( $val ); 
     }
+    // Lead capture & transcript export fields
+    $lead_boolean_fields = [ 'enable_lead_capture', 'enable_transcript_export' ];
+    if ( in_array( $field, $lead_boolean_fields, true ) ) {
+        return (int) ( ! empty( $val ) );
+    }
+    if ( $field === 'lead_notification_email' ) {
+        $email = sanitize_email( $val );
+        return is_email( $email ) ? $email : '';
+    }
+
     if ( is_array( $val ) ) {
         return array_map( 'sanitize_text_field', $val );
     }

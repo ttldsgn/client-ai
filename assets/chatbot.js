@@ -34,6 +34,7 @@
   var messages         = [];    // Stores all messages for transcript export
   var leadFormActive   = false; // Whether lead capture form is currently shown
   var transcriptActive = false; // Whether transcript export overlay is currently shown
+  var sessionToken     = '';    // Server-issued HMAC token for session ownership verification
 
   /* ── Build DOM ───────────────────────────────────────── */
   function init() {
@@ -361,6 +362,11 @@
             if (data.data.handover) {
               addHandoverButtons(data.data);
             }
+
+            // Capture session ownership token for transcript export
+            if (data.data.session_token) {
+              sessionToken = data.data.session_token;
+            }
           } else {
             var msg = (data.data && data.data.message) ? data.data.message : 'Something went wrong. Please try again.';
             addMsg(msg, 'error');
@@ -574,7 +580,20 @@
 
     var xhr = new XMLHttpRequest();
     xhr.open('POST', cfg.ajaxUrl, true);
+    xhr.timeout = 15000; // 15 second timeout
     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onerror = function() {
+      statusEl.textContent = 'Network error. Please check your connection and try again.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Message';
+    };
+    xhr.ontimeout = function() {
+      statusEl.textContent = 'Request timed out. Please try again.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send Message';
+    };
     xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) return;
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -615,6 +634,8 @@
       }
     };
 
+    var hpVal = (document.querySelector('.aicb-honeypot') || {}).value || '';
+
     xhr.send(encodeParams({
       action:     'aicb_lead_submit',
       nonce:      cfg.leadNonce,
@@ -622,7 +643,8 @@
       email:      emailVal,
       message:    msgVal,
       session_id: sessionId,
-      page_id:    cfg.pageId || 0
+      page_id:    cfg.pageId || 0,
+      website:    hpVal
     }));
   }
 
@@ -714,7 +736,20 @@
 
     var xhr = new XMLHttpRequest();
     xhr.open('POST', cfg.ajaxUrl, true);
+    xhr.timeout = 15000; // 15 second timeout
     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    xhr.onerror = function() {
+      statusEl.textContent = 'Network error. Please check your connection and try again.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send Transcript';
+    };
+    xhr.ontimeout = function() {
+      statusEl.textContent = 'Request timed out. Please try again.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Send Transcript';
+    };
     xhr.onreadystatechange = function () {
       if (xhr.readyState !== 4) return;
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -753,11 +788,15 @@
       }
     };
 
+    var hpVal = (document.querySelector('.aicb-honeypot') || {}).value || '';
+
     xhr.send(encodeParams({
-      action:     'aicb_export_transcript',
-      nonce:      cfg.transcriptNonce,
-      email:      emailVal,
-      session_id: sessionId
+      action:        'aicb_export_transcript',
+      nonce:         cfg.transcriptNonce,
+      email:         emailVal,
+      session_id:    sessionId,
+      session_token: sessionToken,
+      website:       hpVal
     }));
   }
 
