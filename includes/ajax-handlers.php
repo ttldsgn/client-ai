@@ -335,12 +335,41 @@ function aicb_generate_session_token( $session_id ) {
 
 function aicb_get_user_ip() {
     $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+
     if ( defined( 'AICB_TRUST_PROXY' ) && AICB_TRUST_PROXY ) {
+        // Restrict trusted reverse proxy IP ranges to block client header spoofing
+        $trusted_proxies = [
+            '127.0.0.1', '::1' // local loopbacks
+        ];
+
+        // Safely parse administrator-defined trusted proxy constants if declared
+        if ( defined( 'AICB_TRUSTED_PROXIES' ) ) {
+            $custom_proxies = explode( ',', AICB_TRUSTED_PROXIES );
+            foreach ( $custom_proxies as $cp ) {
+                $trusted_proxies[] = trim( $cp );
+            }
+        }
+
+        // Apply a safe filter for context extension
+        $trusted_proxies = apply_filters( 'aicb_trusted_proxies', $trusted_proxies );
+
+        // Standard Cloudflare edge proxy verification checks
+        $is_cf_ip = false;
         if ( ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
+            // Validate if the direct connection originates from a proxy in our list
+            if ( in_array( $_SERVER['REMOTE_ADDR'], $trusted_proxies, true ) ) {
+                $is_cf_ip = true;
+            }
+        }
+
+        if ( $is_cf_ip && ! empty( $_SERVER['HTTP_CF_CONNECTING_IP'] ) ) {
             $ip = $_SERVER['HTTP_CF_CONNECTING_IP'];
         } elseif ( ! empty( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
-            $ips = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
-            $ip = trim( $ips[0] );
+            // Verify origin IP matches trusted proxies before digesting forwarded chain
+            if ( in_array( $_SERVER['REMOTE_ADDR'], $trusted_proxies, true ) ) {
+                $ips = explode( ',', $_SERVER['HTTP_X_FORWARDED_FOR'] );
+                $ip = trim( $ips[0] );
+            }
         }
     }
     return filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : 'unknown';
@@ -506,6 +535,18 @@ function aicb_ajax_lead_submit() {
 
     // Rate limiting per IP
     $ip_hash = hash( 'sha256', aicb_get_user_ip() );
+    
+    // Verify session ownership if a session_id is provided
+    if ( ! empty( $session_id ) ) {
+        $session_data = get_transient( 'aicb_session_' . $session_id );
+        if ( false === $session_data ) {
+            wp_send_json_error( [ 'message' => 'Session not found or has expired.' ], 403 );
+        }
+        if ( ! hash_equals( $session_data['ip_hash'], $ip_hash ) ) {
+            wp_send_json_error( [ 'message' => 'Unauthorized: session IP mismatch.' ], 403 );
+        }
+    }
+
     $rate_key = 'aicb_lead_rate_' . $ip_hash;
     $hits     = (int) get_transient( $rate_key );
     if ( $hits >= 3 ) {

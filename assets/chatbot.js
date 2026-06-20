@@ -420,6 +420,8 @@
         addMsg('The AI assistant is not fully configured. Please contact support.', 'error');
         awaitingHandover = false;
       } else if (xhr.status === 400 || xhr.status === 403) {
+        // Reset sessionId on 403 Session Hijack / Expiration Gate Check
+        sessionId = '';
         try {
           var errData2 = JSON.parse(xhr.responseText);
           var msg2 = (errData2.data && errData2.data.message) ? errData2.data.message : 'Something went wrong. Please try again.';
@@ -465,6 +467,9 @@
 
     var msgs = document.getElementById('aicb-messages');
     if (!msgs) return;
+
+    // Check if lead capture trigger container already exists inside messages viewport
+    if (msgs.querySelector('.aicb-lead-container')) return;
 
     var container = el('div', {
       'class': 'aicb-lead-container',
@@ -743,6 +748,13 @@
     var sendBtn = document.querySelector('.aicb-transcript-overlay .aicb-btn-primary');
 
     if (!emailInput || !statusEl || !sendBtn) return;
+
+    // Verify a chat session has been established before initiating dynamic email checks
+    if (!sessionId || sessionId === '') {
+      statusEl.textContent = 'Please send a message first.';
+      statusEl.className = 'aicb-lead-status aicb-lead-error';
+      return;
+    }
 
     var emailVal = emailInput.value.trim();
 

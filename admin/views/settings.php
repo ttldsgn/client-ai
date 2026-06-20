@@ -46,7 +46,7 @@
 
 /* 
  * Failsafe Progressive Enhancement:
- * Panels remain standard blocks by default. Hiding is only activated 
+ * Panels and external panels remain standard blocks by default. Hiding is only activated 
  * if JavaScript initializes correctly to prevent formatting locks.
  */
 .aicb-js-active .aicb-tab-panel {
@@ -54,6 +54,9 @@
 }
 .aicb-js-active .aicb-tab-panel.active {
     display: block;
+}
+.aicb-js-active #tab-advanced-migration-external {
+    display: none;
 }
 
 /* Flat top integration for the first section touching the bottom of the tabs */
@@ -240,7 +243,7 @@
                                 <option value="ไทย" <?= selected( aicb_opt('chatbot_language'), 'ไทย', false ) ?>><?php esc_html_e( 'ไทย', 'ai-chatbot' ); ?></option>
                                 <option value="עברית" <?= selected( aicb_opt('chatbot_language'), 'עברית', false ) ?>><?php esc_html_e( 'עברית', 'ai-chatbot' ); ?></option>
                             </select>
-                            <p class="description"><?php esc_html_e( 'Use a language name the AI can understand. Language is sent to the model as an instruction in the system prompt.', 'ai-chatbot' ); ?></p>
+                            <p class="description">Use a language name the AI can understand. Language is sent to the model as an instruction in the system prompt.</p>
                         </td>
                     </tr>
                 </table>
@@ -251,7 +254,7 @@
         <div id="tab-knowledge-persona" class="aicb-tab-panel">
             <!-- ── KNOWLEDGE BASE & CACHING ── -->
             <div class="aicb-section">
-                <h2><?php esc_html_e( 'Knowledge Base & Caching', 'ai-chatbot' ); ?></h2>
+                <h2>Knowledge Base & Caching</h2>
                 <table class="form-table">
                     <tr>
                         <th><?php esc_html_e( 'Enable Caching', 'ai-chatbot' ); ?></th>
@@ -682,7 +685,7 @@
     </form>
 
     <!-- ── TAB 5 EXTERNAL CONTAINER: IMPORT / EXPORT CONFIGURATION ── -->
-    <div id="tab-advanced-migration-external" style="display:none;">
+    <div id="tab-advanced-migration-external" style="">
         <div class="aicb-section">
             <h2><?php esc_html_e( 'Import / Export Configuration', 'ai-chatbot' ); ?></h2>
 
