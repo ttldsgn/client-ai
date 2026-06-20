@@ -69,10 +69,12 @@ function aicb_enqueue_frontend() {
         'primaryBtnUrl'     => aicb_clean_url( aicb_get_handover_url() ),
         'secondaryBtnText'  => esc_html( aicb_opt( 'contact_btn_text' ) ),
         'secondaryBtnUrl'   => aicb_clean_url( aicb_opt( 'contact_btn_url' ) ),
-        'enableLeadCapture' => $enable_lead_capture ? true : false,
-        'leadNonce'         => $enable_lead_capture ? wp_create_nonce( 'aicb_lead' ) : '',
-        'enableTranscript'  => $enable_transcript ? true : false,
-        'transcriptNonce'   => $enable_transcript ? wp_create_nonce( 'aicb_export_transcript' ) : '',
+        'enableLeadCapture'   => $enable_lead_capture ? true : false,
+        'leadNonce'           => $enable_lead_capture ? wp_create_nonce( 'aicb_lead' ) : '',
+        'enableTranscript'    => $enable_transcript ? true : false,
+        'transcriptNonce'     => $enable_transcript ? wp_create_nonce( 'aicb_export_transcript' ) : '',
+        'handoverPrompt'      => aicb_opt( 'handover_prompt' ),
+        'showFooterHelpButton'=> aicb_opt( 'show_footer_help_button' ) ? true : false,
     ] );
 }
 
@@ -348,7 +350,30 @@ function aicb_is_handover_requested( $question ) {
     if ( ! aicb_opt( 'enable_handover' ) ) return false;
     $question = strtolower( trim( $question ) );
     $question = preg_replace( '/[^\w\s]/u', '', $question );
-    $phrases = [ 'live person', 'real person', 'human', 'representative', 'operator', 'talk to someone', 'contact me', 'contact us' ];
+
+    // Built-in default phrases
+    $phrases = [
+        'live person', 'real person', 'human', 'representative', 'operator',
+        'talk to someone', 'contact me', 'contact us', 'need help', 'need a person',
+        'speak to someone', 'human support', 'real support', 'agent please',
+        'schedule a call', 'need a callback', 'customer service', 'talk to an agent',
+        'not helpful', 'this isnt working', 'this isn\'t working', 'doesn\'t answer',
+        'doesnt answer', 'i\'m stuck', 'im stuck', 'cant find', 'can\'t find',
+        'frustrated', 'annoyed', 'ridiculous', 'unacceptable', 'worst',
+        'need to speak', 'want to speak', 'talk to a person', 'speak to a person',
+        'human help', 'real human', 'actual person', 'live agent'
+    ];
+
+    // Merge admin-configured custom trigger phrases (one per line)
+    $custom = aicb_opt( 'handover_trigger_phrases' );
+    if ( ! empty( $custom ) ) {
+        $custom_lines = explode( "\n", $custom );
+        foreach ( $custom_lines as $line ) {
+            $line = strtolower( trim( $line ) );
+            if ( ! empty( $line ) ) $phrases[] = $line;
+        }
+    }
+
     foreach ( $phrases as $phrase ) {
         if ( strpos( $question, $phrase ) !== false ) return true;
     }

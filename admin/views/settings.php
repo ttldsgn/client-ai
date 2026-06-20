@@ -166,6 +166,16 @@
                 </td>
             </tr>
             <tr>
+                <th><label for="aicb_show_footer_help_button">Show "Need human help?" Button</label></th>
+                <td>
+                    <label>
+                        <input type="checkbox" id="aicb_show_footer_help_button" name="aicb_show_footer_help_button" value="1" <?= checked( aicb_opt('show_footer_help_button'), 1 ) ?> />
+                        Display a persistent "Need human help?" button in the chat footer that opens the contact form directly
+                    </label>
+                    <p class="description">This button provides visitors with an always-visible escape hatch to request human assistance without triggering the conversational handover flow. Works independently of the Enable Handover setting above.</p>
+                </td>
+            </tr>
+            <tr>
                 <th><label for="aicb_handover_apology">Apology Text (Fallback)</label></th>
                 <td>
                     <input type="text" id="aicb_handover_apology" name="aicb_handover_apology" 
@@ -179,6 +189,13 @@
                     <input type="text" id="aicb_handover_prompt" name="aicb_handover_prompt" 
                            value="<?= esc_attr( aicb_opt('handover_prompt') ) ?>" class="large-text" />
                     <p class="description">Used when a visitor explicitly asks to talk to a human or representative.</p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="aicb_handover_trigger_phrases">Custom Trigger Phrases</label></th>
+                <td>
+                    <textarea id="aicb_handover_trigger_phrases" name="aicb_handover_trigger_phrases" rows="6" class="large-text"><?= esc_textarea( aicb_opt('handover_trigger_phrases') ) ?></textarea>
+                    <p class="description">One phrase per line. When a visitor's message contains any of these phrases (case-insensitive), the handover/contact form will be triggered automatically. Use for business-specific terms like "refund request", "cancel subscription", "speak to an attorney".</p>
                 </td>
             </tr>
             <tr>

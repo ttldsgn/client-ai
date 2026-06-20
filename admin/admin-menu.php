@@ -191,11 +191,11 @@ function aicb_handle_export_settings() {
         'placeholder', 'footer_text', 'max_tokens', 'rate_limit', 'system_prompt', 'enabled',
         'show_on_all', 'log_retention_days', 'enable_cache', 'cache_duration', 'indexing_mode',
         'indexed_post_types', 'enable_handover', 'handover_apology', 'handover_prompt',
-        'handover_type', 'handover_target', 'handover_btn_text', 'contact_btn_text',
-        'contact_btn_url', 'handover_primary_text', 'handover_secondary_bg',
-        'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
-        'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
-        'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'handover_trigger_phrases', 'show_footer_help_button', 'handover_type', 'handover_target',
+        'handover_btn_text', 'contact_btn_text', 'contact_btn_url', 'handover_primary_text',
+        'handover_secondary_bg', 'handover_secondary_text', 'handover_btn_radius',
+        'always_show_handover_buttons', 'business_name', 'pronoun_perspective', 'chatbot_tone',
+        'chatbot_language_mode', 'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
         'enable_lead_capture', 'lead_notification_email', 'enable_transcript_export',
     ];
 
@@ -302,11 +302,11 @@ function aicb_handle_import_settings() {
         'placeholder', 'footer_text', 'max_tokens', 'rate_limit', 'system_prompt', 'enabled',
         'show_on_all', 'log_retention_days', 'enable_cache', 'cache_duration', 'indexing_mode',
         'indexed_post_types', 'enable_handover', 'handover_apology', 'handover_prompt',
-        'handover_type', 'handover_target', 'handover_btn_text', 'contact_btn_text',
-        'contact_btn_url', 'handover_primary_text', 'handover_secondary_bg',
-        'handover_secondary_text', 'handover_btn_radius', 'always_show_handover_buttons',
-        'business_name', 'pronoun_perspective', 'chatbot_tone', 'chatbot_language_mode',
-        'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
+        'handover_trigger_phrases', 'show_footer_help_button', 'handover_type', 'handover_target',
+        'handover_btn_text', 'contact_btn_text', 'contact_btn_url', 'handover_primary_text',
+        'handover_secondary_bg', 'handover_secondary_text', 'handover_btn_radius',
+        'always_show_handover_buttons', 'business_name', 'pronoun_perspective', 'chatbot_tone',
+        'chatbot_language_mode', 'chatbot_language', 'enable_feedback', 'enable_calendar_tools',
         'enable_lead_capture', 'lead_notification_email', 'enable_transcript_export',
     ];
     if ( isset( $import_data['general'] ) && is_array( $import_data['general'] ) ) {
@@ -441,15 +441,15 @@ function aicb_sanitize_import_option( $val, $field ) {
     }
 
     // Handover/custom button text fields
-    if ( in_array( $field, [ 'handover_apology', 'handover_prompt', 'handover_btn_text', 'contact_btn_text', 'handover_primary_text', 'handover_secondary_bg', 'handover_secondary_text' ], true ) ) {
-        return sanitize_text_field( $val );
+    if ( in_array( $field, [ 'handover_apology', 'handover_prompt', 'handover_btn_text', 'contact_btn_text', 'handover_primary_text', 'handover_secondary_bg', 'handover_secondary_text', 'handover_trigger_phrases' ], true ) ) {
+        return sanitize_textarea_field( $val );
     }
     if ( in_array( $field, [ 'contact_btn_url', 'handover_target', 'handover_btn_radius' ], true ) ) {
         return sanitize_text_field( $val );
     }
 
     // Lead capture & transcript export fields
-    $lead_boolean_fields = [ 'enable_lead_capture', 'enable_transcript_export' ];
+    $lead_boolean_fields = [ 'enable_lead_capture', 'enable_transcript_export', 'show_footer_help_button' ];
     if ( in_array( $field, $lead_boolean_fields, true ) ) {
         return (int) ( ! empty( $val ) );
     }
@@ -467,6 +467,15 @@ function aicb_sanitize_import_option( $val, $field ) {
 }
 
 function aicb_sanitize_specific_option( $val, $field ) {
+    $boolean_fields = [
+        'enable_handover', 'enable_cache', 'enabled', 'show_on_all', 'enable_feedback',
+        'enable_calendar_tools', 'enable_lead_capture', 'enable_transcript_export',
+        'show_footer_help_button', 'always_show_handover_buttons'
+    ];
+    if ( in_array( $field, $boolean_fields, true ) ) {
+        return (int) ( ! empty( $val ) );
+    }
+
     // Guard: preserve existing data when the option wasn't submitted in a form
     if ( $val === null || $val === '' ) {
         return get_option( 'aicb_' . $field, aicb_default_options()[ $field ] ?? '' );

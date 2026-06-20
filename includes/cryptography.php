@@ -38,6 +38,8 @@ function aicb_default_options() {
         'handover_btn_text'     => 'Connect with a live person',
         'contact_btn_text'      => 'Visit Contact Page',
         'contact_btn_url'       => home_url( '/contact/' ),
+        'handover_trigger_phrases' => '',
+        'show_footer_help_button'  => 1,
         // Handover Button Stylings
         'handover_primary_text'   => '#ffffff',
         'handover_secondary_bg'   => '#f1f5f9',

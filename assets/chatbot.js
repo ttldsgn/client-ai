@@ -203,6 +203,29 @@
       footerEl = el('div', { id: 'aicb-footer' }, cfg.footerText);
     }
 
+    /* Persistent "Need human help?" button — always visible escape hatch */
+    if (cfg.showFooterHelpButton && cfg.enableLeadCapture && cfg.leadNonce) {
+      var helpBtn = el('button', {
+        'id': 'aicb-help-btn',
+        'class': 'aicb-transcript-link',
+        'aria-label': 'Request human help',
+        'type': 'button'
+      }, '💬 Need human help?');
+      helpBtn.addEventListener('click', function () {
+        if (!leadFormActive) {
+          showLeadForm();
+        }
+      });
+
+      if (footerEl) {
+        footerEl.appendChild(el('span', { 'class': 'aicb-footer-sep' }, ' · '));
+        footerEl.appendChild(helpBtn);
+      } else {
+        footerEl = el('div', { 'id': 'aicb-footer' });
+        footerEl.appendChild(helpBtn);
+      }
+    }
+
     /* Transcript export link in footer */
     if (cfg.enableTranscript && cfg.transcriptNonce) {
       var transcriptLink = el('button', {
@@ -912,7 +935,14 @@
     }
 
     upBtn.addEventListener('click', function () { submitFeedback(1); });
-    downBtn.addEventListener('click', function () { submitFeedback(0); });
+    downBtn.addEventListener('click', function () {
+      submitFeedback(0);
+      // Thumbs-down triggers handover offer immediately
+      if (cfg.enableHandover && !awaitingHandover) {
+        addMsg(cfg.handoverPrompt || "It looks like I couldn't help. Would you like to connect with our team?", 'bot');
+        awaitingHandover = true;
+      }
+    });
   }
 
   function scrollToBottom() {
