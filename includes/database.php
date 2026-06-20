@@ -223,9 +223,9 @@ function aicb_maybe_add_session_id_index() {
     if ( get_option( $flag ) ) return; // Already migrated — skip DB query entirely
 
     $index_name = 'session_id';
-    $has_index = $wpdb->get_results( $wpdb->prepare( "SHOW INDEX FROM {$table} WHERE Key_name = %s", $index_name ) );
+    $has_index = $wpdb->get_results( $wpdb->prepare( "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", $index_name ) );
     if ( empty( $has_index ) ) {
-        $result = $wpdb->query( "ALTER TABLE {$table} ADD INDEX session_id (session_id)" );
+        $result = $wpdb->query( "ALTER TABLE `{$table}` ADD INDEX `session_id` (`session_id`)" );
         if ( false === $result ) {
             error_log( 'AICB DB Migration Error: Failed to add session_id index. ' . $wpdb->last_error );
             return;

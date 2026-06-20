@@ -116,18 +116,18 @@ function aicb_ajax_chat() {
     $question   = sanitize_textarea_field( wp_unslash( $_POST['question'] ?? '' ) );
     $page_id    = (int) ( $_POST['page_id'] ?? 0 );
 
-    // Server-side session management: accept caller-provided session only if they
-    // already own it (proven by a valid session_token), otherwise issue a fresh one.
-    $session_id      = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
-    $provided_token  = sanitize_text_field( wp_unslash( $_POST['session_token'] ?? '' ) );
-    $session_store   = get_option( 'aicb_session_store', [] );
+    // Server-side session management: use per-session transients keyed by session_id.
+    // Each session stores the creator's ip_hash and auto-expires after 24 hours.
+    $session_id = sanitize_text_field( wp_unslash( $_POST['session_id'] ?? '' ) );
+    $session_key = 'aicb_session_' . $session_id;
+    $session_data = get_transient( $session_key );
 
-    if ( empty( $session_id ) || ! isset( $session_store[ $session_id ] ) ) {
+    if ( empty( $session_id ) || false === $session_data ) {
         // New session: generate server-side identifier (unforgeable random bytes)
         $session_id = 'sess_' . bin2hex( random_bytes( 16 ) );
-        $session_store[ $session_id ] = $ip_hash;
-        update_option( 'aicb_session_store', $session_store );
-    } elseif ( ! hash_equals( $session_store[ $session_id ], $ip_hash ) ) {
+        $session_data = [ 'ip_hash' => $ip_hash ];
+        set_transient( 'aicb_session_' . $session_id, $session_data, DAY_IN_SECONDS );
+    } elseif ( ! hash_equals( $session_data['ip_hash'], $ip_hash ) ) {
         // Session exists but IP mismatch — reject to prevent session hijacking
         wp_send_json_error( [ 'message' => 'Session expired or invalid.' ], 403 );
     }
@@ -571,13 +571,13 @@ function aicb_ajax_export_transcript() {
         wp_send_json_error( [ 'message' => 'No conversation session found.' ], 400 );
     }
 
-    // Verify session ownership: session must exist in our server-side store
+    // Verify session ownership: session must exist as a transient
     // and the requester's IP must match the IP that created the session
-    $session_store = get_option( 'aicb_session_store', [] );
-    if ( ! isset( $session_store[ $session_id ] ) ) {
+    $session_data = get_transient( 'aicb_session_' . $session_id );
+    if ( false === $session_data ) {
         wp_send_json_error( [ 'message' => 'Session not found or has expired.' ], 403 );
     }
-    if ( ! hash_equals( $session_store[ $session_id ], $ip_hash ) ) {
+    if ( ! hash_equals( $session_data['ip_hash'], $ip_hash ) ) {
         wp_send_json_error( [ 'message' => 'Unauthorized: session IP mismatch.' ], 403 );
     }
 
