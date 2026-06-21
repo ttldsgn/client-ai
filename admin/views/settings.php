@@ -92,6 +92,17 @@
 .aicb-settings-submit-wrapper {
     margin-top: 20px;
 }
+
+label:has(input[name="aicb_icon"]) span {
+    border: 2px solid #ffffff;
+    border-radius: 10px;
+    padding: 5px;
+}
+
+label:has(input[name="aicb_icon"]:checked) span {
+    border-color: var(--wp-admin-theme-color);
+}
+
 </style>
 
 <div class="wrap aicb-wrap">
