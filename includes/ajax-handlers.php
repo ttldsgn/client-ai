@@ -176,7 +176,7 @@ function aicb_ajax_chat() {
 					'primaryBtnText'   => esc_html( aicb_opt( 'handover_btn_text' ) ),
 					'primaryBtnUrl'    => aicb_clean_url( aicb_get_handover_url() ),
 					'secondaryBtnText' => esc_html( aicb_opt( 'contact_btn_text' ) ),
-					'secondaryBtnUrl'  => esc_url_raw( aicb_clean_url( aicb_opt( 'contact_btn_url' ) ) ),
+					'secondaryBtnUrl'  => esc_url_raw( aicb_opt( 'contact_btn_url' ) ),
 				)
 			);
 		}
