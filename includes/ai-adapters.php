@@ -475,7 +475,7 @@ function aicb_adapter_openai_compat( $endpoint, $key, $model, $messages, $max_to
 		// Fallback to old catalog scan if DB table doesn't exist yet
 		$catalog = aicb_get_catalog();
 		foreach ( $catalog['providers'] as $p ) {
-			if ( $p['id'] === 'custom' || strpos( $endpoint, $p['id'] ) !== false || strpos( $endpoint, $p['website'] ?? '' ) !== false ) {
+			if ( $p['id'] === 'custom' || strpos( $endpoint, $p['id'] ) !== false || ( ! empty( $p['website'] ) && strpos( $endpoint, $p['website'] ) !== false ) ) {
 				foreach ( $p['models'] ?? array() as $m ) {
 					if ( $m['id'] === $model && ! empty( $m['supports_tools'] ) ) {
 						$has_tool_support = true;

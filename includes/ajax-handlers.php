@@ -74,7 +74,7 @@ function aicb_enqueue_frontend() {
 			'primaryBtnText'       => esc_html( aicb_opt( 'handover_btn_text' ) ),
 			'primaryBtnUrl'        => aicb_clean_url( aicb_get_handover_url() ),
 			'secondaryBtnText'     => esc_html( aicb_opt( 'contact_btn_text' ) ),
-			'secondaryBtnUrl'      => aicb_clean_url( aicb_opt( 'contact_btn_url' ) ),
+			'secondaryBtnUrl'      => esc_url_raw( aicb_opt( 'contact_btn_url' ) ),
 			'enableLeadCapture'    => $enable_lead_capture ? true : false,
 			'leadNonce'            => $enable_lead_capture ? wp_create_nonce( 'aicb_lead' ) : '',
 			'enableTranscript'     => $enable_transcript ? true : false,
@@ -263,7 +263,7 @@ function aicb_ajax_chat() {
 	$perspective   = aicb_opt( 'pronoun_perspective' );
 	$tone          = aicb_opt( 'chatbot_tone' );
 
-	$identity_prompt = ! empty( $business_name ) ? "You are the official AI representative for the entity '" . esc_attr( $business_name ) . "' directly. Never use any other brand name, phrase, or tagline as your company name." : 'You are the official AI representative representing this website.';
+	$identity_prompt = ! empty( $business_name ) ? "You are the official AI representative for the entity '" . $business_name . "' directly. Never use any other brand name, phrase, or tagline as your company name." : 'You are the official AI representative representing this website.';
 
 	$perspective_prompt = '';
 	if ( $perspective === 'first-singular' ) {

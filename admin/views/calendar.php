@@ -150,7 +150,7 @@
 					<span>📆 Years:
 						<a href="?page=ai-chatbot-calendar">All</a>
 						<?php foreach ( array_keys( $years ) as $y ) : ?>
-							| <a href="?page=ai-chatbot-calendar&ek_year=<?php echo $y; ?>"<?php echo $filter_year === (string) $y ? ' style="font-weight:700;text-decoration:none"' : ''; ?>><?php echo $y; ?></a>
+							| <a href="<?php echo esc_url( add_query_arg( 'ek_year', $y, admin_url( 'admin.php?page=ai-chatbot-calendar' ) ) ); ?>"<?php echo $filter_year === (string) $y ? ' style="font-weight:700;text-decoration:none"' : ''; ?>><?php echo esc_html( $y ); ?></a>
 						<?php endforeach; ?>
 					</span>
 				<?php endif; ?>
