@@ -11,12 +11,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'AICB_VERSION',   '2.6.0' );
-define( 'AICB_FILE',      __FILE__ );
-define( 'AICB_DIR',       plugin_dir_path( __FILE__ ) );
-define( 'AICB_URL',       plugin_dir_url( __FILE__ ) );
+define( 'AICB_VERSION', '2.6.0' );
+define( 'AICB_FILE', __FILE__ );
+define( 'AICB_DIR', plugin_dir_path( __FILE__ ) );
+define( 'AICB_URL', plugin_dir_url( __FILE__ ) );
 define( 'AICB_LOG_TABLE', 'aicb_logs' );
-define( 'AICB_QA_TABLE',  'aicb_custom_qa' );
+define( 'AICB_QA_TABLE', 'aicb_custom_qa' );
 define( 'AICB_MODEL_TABLE', 'aicb_models' );
 define( 'AICB_LEADS_TABLE', 'aicb_leads' );
 
@@ -32,7 +32,7 @@ require_once AICB_DIR . 'includes/ajax-handlers.php';
 
 // 3. Load Admin Components
 if ( is_admin() ) {
-    require_once AICB_DIR . 'admin/admin-menu.php';
+	require_once AICB_DIR . 'admin/admin-menu.php';
 }
 
 // 4. Uninstall Hook

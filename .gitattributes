@@ -1,2 +1,40 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# PHP files - force LF
+*.php text eol=lf
+
+# Frontend assets - force LF
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Config files
+*.xml text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+composer.json text eol=lf
+composer.lock text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.eot binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.phar binary
+
+# WordPress plugin distribution - exclude dev files
+/vendor/ export-ignore
+composer.phar export-ignore
+phpcs.xml export-ignore
+composer.json export-ignore
+composer.lock export-ignore

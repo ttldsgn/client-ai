@@ -1,0 +1,27 @@
+# Composer
+/vendor/
+composer.phar
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Logs
+*.log
+debug.log
+
+# Node (future-proofing)
+/node_modules/
+package-lock.json
+
+# Testing / CI
+.phpunit.result.cache
+.phpcs.cache
