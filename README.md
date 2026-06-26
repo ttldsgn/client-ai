@@ -16,7 +16,7 @@ Because `ClientAI` is completely self-hosted and open-source, you don't pay a mo
 
 Thanks to our localized caching system and keyword-targeted RAG architecture, running costs are incredibly low (often under $1.00/month for standard business sites).
 
-👉 **[Read the full Transparency Statement & True Cost Estimation Guide](COSTS.md)** to see real-world cost calculations across different web traffic profiles.
+👉 **[Read the full Transparency Statement & True Cost Estimation Guide](COST.md)** to see real-world cost calculations across different web traffic profiles.
 
 ### 1. Global Public Holidays Lookup (Nager.Date API)
 
