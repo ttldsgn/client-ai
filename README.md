@@ -6,18 +6,6 @@ A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supp
 
 * * *
 
-## Important Disclosures & Privacy Notice
-
-To deliver advanced context-aware assistance and dynamically fetched calendar parameters, this plugin interfaces with the following external services. All data transmitted is limited strictly to the resources required to process requests.
-
-## 💰 API Costs & Transparency
-
-Because `ClientAI` is completely self-hosted and open-source, you don't pay a monthly subscription fee to use it. You only pay for the raw API tokens you consume through providers like Groq or OpenRouter.
-
-Thanks to our localized caching system and keyword-targeted RAG architecture, running costs are incredibly low (often under $1.00/month for standard business sites).
-
-👉 **[Read the full Transparency Statement & True Cost Estimation Guide](COST.md)** to see real-world cost calculations across different web traffic profiles.
-
 ### 1. Global Public Holidays Lookup (Nager.Date API)
 
 - **Service Provider**: Nager.Date API ([https://date.nager.at](https://date.nager.at))
@@ -34,6 +22,20 @@ Depending on your chosen configuration in the settings panel, this plugin forwar
 - **Groq API** ([https://api.groq.com](https://api.groq.com)): [Groq Privacy Policy](https://groq.com/privacy/)
 - **Cerebras API** ([https://api.cerebras.ai](https://api.cerebras.ai)): [Cerebras Privacy Policy](https://www.cerebras.net/privacy-policy/)
 - **Mistral API** ([https://docs.mistral.ai/api](https://docs.mistral.ai/api/)): [Mistral Privacy Policy](https://legal.mistral.ai/terms/privacy-policy?language=en-US)
+
+* * *
+
+## Important Disclosures & Privacy Notice
+
+To deliver advanced context-aware assistance and dynamically fetched calendar parameters, this plugin interfaces with the following external services. All data transmitted is limited strictly to the resources required to process requests.
+
+## 💰 API Costs & Transparency
+
+Because `ClientAI` is completely self-hosted and open-source, you don't pay a monthly subscription fee to use it. You only pay for the raw API tokens you consume through providers like Groq or OpenRouter.
+
+Thanks to our localized caching system and keyword-targeted RAG architecture, running costs are incredibly low (often under $1.00/month for standard business sites).
+
+👉 **[Read the full Transparency Statement & True Cost Estimation Guide](COST.md)** to see real-world cost calculations across different web traffic profiles.
 
 * * *
 
