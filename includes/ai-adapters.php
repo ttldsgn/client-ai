@@ -81,6 +81,29 @@ function aicb_get_catalog() {
 		$catalog['providers'][] = $provider_map[ $pid ];
 	}
 
+	// Merge provider-level metadata (key_label, key_help, docs_url, website)
+	// from the JSON seed file, since these fields live at the provider level
+	// in models.json but are not stored in the per-model database rows.
+	$json_file = AICB_DIR . 'assets/models.json';
+	if ( file_exists( $json_file ) ) {
+		$json_data = json_decode( file_get_contents( $json_file ), true );
+		if ( ! empty( $json_data['providers'] ) && is_array( $json_data['providers'] ) ) {
+			$json_providers = array();
+			foreach ( $json_data['providers'] as $jp ) {
+				$json_providers[ $jp['id'] ] = $jp;
+			}
+			foreach ( $catalog['providers'] as &$cp ) {
+				$pid = $cp['id'];
+				if ( isset( $json_providers[ $pid ] ) ) {
+					$cp['website']   = $json_providers[ $pid ]['website']   ?? '';
+					$cp['key_label'] = $json_providers[ $pid ]['key_label'] ?? '';
+					$cp['key_help']  = $json_providers[ $pid ]['key_help']  ?? '';
+					$cp['docs_url']  = $json_providers[ $pid ]['docs_url']  ?? '';
+				}
+			}
+		}
+	}
+
 	return $catalog;
 }
 

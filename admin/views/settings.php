@@ -811,6 +811,13 @@ label:has(input[name="aicb_icon"]:checked) span {
 	function updateModels(providerId) {
 		var p = providerMap[providerId];
 		if (!p) return;
+
+		// Toggle the visible API key row to match the selected provider
+		var allRows = document.querySelectorAll('.aicb-key-row');
+		for (var i = 0; i < allRows.length; i++) allRows[i].classList.remove('active');
+		var keyRow = document.getElementById('aicb-keyrow-' + providerId);
+		if (keyRow) keyRow.classList.add('active');
+
 		modelSel.innerHTML = '';
 		
 		// Retain and display Model Dropdown always, allowing custom model selects
