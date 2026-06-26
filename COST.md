@@ -2,7 +2,7 @@
 
 An architectural breakdown of token utilization, caching mechanics, and real-world running costs.
 
-> **📅 Current Pricing Baseline:** All model calculations, provider rates, and token estimates in this guide are accurate based on live pay-as-you-go rates tracked on **Friday, June 26, 2026**.
+> **📅 Pricing Snapshot:** All model calculations, provider rates, and token estimates in this guide reflect live pay-as-you-go rates as of **Friday, June 26, 2026**. These figures are a dated snapshot and are subject to change; consult each provider's official pricing page for current rates.
 
 When deploying an AI chatbot on your WordPress website, one of the primary concerns is the ongoing running cost of LLM APIs. This guide is designed to demystify how `ClientAI` processes data, how the local caching system actively works to protect your wallet, and what the real-world monthly costs look like across different traffic profiles.
 
@@ -32,7 +32,8 @@ Assuming an average conversation session consists of **4 queries**, and each que
 | **Medium Traffic** (20,000 visitors/mo) | 600 users | 2,400 queries | **$0.25 / mo** | **$2.93 / mo** |
 | **High Traffic** (50,000 visitors/mo) | 1,500 users | 6,000 queries | **$0.62 / mo** | **$7.31 / mo** |
 
-*¹ Calculated using **Llama 3.1 8B Instant on Groq** ($0.05 / 1M input; $0.08 / 1M output).* *² Calculated using **Llama 3.3 70B Versatile on Groq** ($0.59 / 1M input; $0.79 / 1M output).*
+*¹ Calculated using **Llama 3.1 8B Instant on Groq** ($0.05 / 1M input; $0.08 / 1M output, as of June 26, 2026 — see [Groq Pricing](https://console.groq.com/settings/billing)).*  
+*² Calculated using **Llama 3.3 70B Versatile on Groq** ($0.59 / 1M input; $0.79 / 1M output, as of June 26, 2026 — see [Groq Pricing](https://console.groq.com/settings/billing)).*
 
 ---
 
@@ -50,7 +51,7 @@ You can completely bypass AI costs for your most commonly asked questions by usi
 
 While providers like Groq or Cerebras offer generous free tiers, they have strict Rate Limits (Requests Per Minute) and are prone to cold starts. To ensure a stable, sub-second production experience on your site, it is highly recommended to upgrade to their Paid/Developer Tiers.
 
-> **💡 Minimum Balance Reassurance:** Paid API accounts usually require a minimum pre-paid deposit of **$10.00** to activate. Because your monthly usage is so efficient, a $10.00 pre-paid balance would easily last **over 12 months** of active usage on a low-traffic business site before requiring a top-up.
+> **💡 Minimum Balance Reassurance:** Paid API accounts usually require a minimum pre-paid deposit of **$10.00** to activate (snapshot as of June 26, 2026; confirm with your provider). Because your monthly usage is so efficient, a $10.00 pre-paid balance would easily last **over 12 months** of active usage on a low-traffic business site before requiring a top-up.
 
 ---
 *ClientAI is a fully self-hosted, open-source WordPress chatbot released under GPLv2.*

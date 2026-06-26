@@ -366,7 +366,7 @@ function aicb_get_page_context( $page_id ) {
  * Decoupled Cache Generator: Summarizes the target page content via the AI provider and caches it.
  * This is executed either on post save/update or via the asynchronous background settings warmer.
  */
-function aicb_generate_page_digest_cache( $page_id ) {
+function aicb_generate_page_digest_cache( $page_id, $provider = '', $model = '' ) {
 	$raw_content = aicb_get_raw_page_content( $page_id );
 	if ( empty( $raw_content ) || preg_match( '/^\[[^\]]+\]$/', $raw_content ) ) {
 		update_post_meta( $page_id, '_aicb_page_digest', $raw_content );
@@ -380,8 +380,8 @@ function aicb_generate_page_digest_cache( $page_id ) {
 		return $raw_content; // Fall back safely to raw context to protect API limits
 	}
 
-	$provider = aicb_opt( 'provider' );
-	$model    = aicb_opt( 'model' );
+	$provider = ! empty( $provider ) ? $provider : aicb_opt( 'provider' );
+	$model    = ! empty( $model )    ? $model    : aicb_opt( 'model' );
 	$system   = 'You are a factual summarization agent. Extract a dense, objective, structured digest of the provided text. Focus only on facts, customer service details, pricing, policies, and schedules. Avoid conversational filler or metadata. Return only the plain-text factual details.';
 	$prompt   = 'Title: ' . get_the_title( $page_id ) . "\n\nContent:\n" . $raw_content;
 	$messages = array(
@@ -472,16 +472,6 @@ function aicb_clean_question_for_search( $question ) {
 }
 
 /**
- * Modify search constraints dynamically to widen hit rates.
- */
-function aicb_permissive_search_filter( $search, $wp_query ) {
-	if ( ! empty( $search ) ) {
-		$search = str_replace( ' AND ', ' OR ', $search );
-	}
-	return $search;
-}
-
-/**
  * Primary multi-page contextual fetch loop (Strategy A).
  * Caps the cumulative context character length to stay strictly within a low token budget.
  */
@@ -522,10 +512,7 @@ function aicb_retrieve_relevant_contexts( $question, $current_page_id = 0 ) {
 		'suppress_filters' => true, // Bypass theme/plugin constraints that exclude non-menu pages
 	);
 
-	// Temporarily activate the permissive search filter to convert strict AND into flexible OR matching
-	add_filter( 'posts_search', 'aicb_permissive_search_filter', 10, 2 );
 	$query = new WP_Query( $args );
-	remove_filter( 'posts_search', 'aicb_permissive_search_filter', 10 );
 
 	if ( $query->have_posts() ) {
 		foreach ( $query->posts as $post_id ) {
@@ -545,71 +532,6 @@ function aicb_retrieve_relevant_contexts( $question, $current_page_id = 0 ) {
 		}
 	}
 	return empty( $contexts ) ? '' : implode( "\n\n", $contexts );
-}
-
-/**
- * Calculate US federal holidays for a given year using PHP date rules (fallback).
- */
-function aicb_calculate_us_federal_holidays( $year ) {
-	$holidays = array(
-		array(
-			'label' => "New Year's Day",
-			'rule'  => 'January 1',
-		),
-		array(
-			'label' => 'Martin Luther King Jr. Day',
-			'rule'  => 'third monday of january',
-		),
-		array(
-			'label' => "Presidents' Day",
-			'rule'  => 'third monday of february',
-		),
-		array(
-			'label' => 'Memorial Day',
-			'rule'  => 'last monday of may',
-		),
-		array(
-			'label' => 'Juneteenth',
-			'rule'  => 'June 19',
-		),
-		array(
-			'label' => 'Independence Day',
-			'rule'  => 'July 4',
-		),
-		array(
-			'label' => 'Labor Day',
-			'rule'  => 'first monday of september',
-		),
-		array(
-			'label' => 'Columbus Day',
-			'rule'  => 'second monday of october',
-		),
-		array(
-			'label' => 'Page Parent',
-			'rule'  => 'November 11',
-		),
-		array(
-			'label' => 'Thanksgiving Day',
-			'rule'  => 'fourth thursday of november',
-		),
-		array(
-			'label' => 'Christmas Day',
-			'rule'  => 'December 25',
-		),
-	);
-
-	$entries = array();
-	foreach ( $holidays as $h ) {
-		$dt        = new DateTime( $h['rule'] . ' ' . $year );
-		$entries[] = array(
-			'date'        => $dt->format( 'Y-m-d' ),
-			'label'       => $h['label'],
-			'status'      => 'closed',
-			'hours_open'  => '',
-			'hours_close' => '',
-		);
-	}
-	return $entries;
 }
 
 /**
@@ -706,7 +628,7 @@ function aicb_get_available_countries() {
 }
 
 /**
- * Fetch public holidays for a given country and year, with fallback calculation for US.
+ * Fetch public holidays for a given country and year via Nager.Date API.
  */
 function aicb_fetch_country_holidays( $year, $country_code = 'US' ) {
 	$country_code = strtoupper( sanitize_key( $country_code ) ) ?: 'US';
@@ -720,16 +642,12 @@ function aicb_fetch_country_holidays( $year, $country_code = 'US' ) {
 	$response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 
 	if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) !== 200 ) {
-		if ( 'US' === $country_code ) {
-			$entries = aicb_calculate_us_federal_holidays( $year );
-		} else {
-			$entries = array();
-		}
+		$entries = array();
 	} else {
 		$body = wp_remote_retrieve_body( $response );
 		$data = json_decode( $body, true );
 		if ( ! is_array( $data ) || empty( $data ) ) {
-			$entries = ( 'US' === $country_code ) ? aicb_calculate_us_federal_holidays( $year ) : array();
+			$entries = array();
 		} else {
 			$entries = array();
 			foreach ( $data as $h ) {

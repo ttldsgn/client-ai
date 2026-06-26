@@ -875,7 +875,15 @@ function aicb_ajax_get_cache_warm_list() {
 	}
 	check_ajax_referer( 'aicb_cache_warm', 'nonce' );
 
-	$allowed_types = (array) aicb_opt( 'indexed_post_types' );
+	// Use current (unsaved) form values when supplied by the settings-page
+	// cache-warmer button; fall back to persisted options otherwise.
+	$allowed_types = array();
+	if ( isset( $_POST['indexed_post_types'] ) && is_array( $_POST['indexed_post_types'] ) ) {
+		$allowed_types = array_map( 'sanitize_text_field', $_POST['indexed_post_types'] );
+	}
+	if ( empty( $allowed_types ) ) {
+		$allowed_types = (array) aicb_opt( 'indexed_post_types' );
+	}
 	if ( empty( $allowed_types ) ) {
 		wp_send_json_success( array( 'ids' => array() ) );
 	}
@@ -916,13 +924,19 @@ function aicb_ajax_warm_single_page_cache() {
 		wp_send_json_error( array( 'message' => 'Invalid Page ID.' ), 400 );
 	}
 
-	$digest = aicb_generate_page_digest_cache( $page_id );
+	// Accept current (unsaved) form values from the settings-page cache-
+	// warmer button so digests are generated with the on-screen config;
+	// absent posts are safely ignored by the downstream function.
+	$provider = isset( $_POST['provider'] ) ? sanitize_text_field( wp_unslash( $_POST['provider'] ) ) : '';
+	$model    = isset( $_POST['model'] )    ? sanitize_text_field( wp_unslash( $_POST['model'] ) )    : '';
+
+	$digest = aicb_generate_page_digest_cache( $page_id, $provider, $model );
 
 	wp_send_json_success(
 		array(
 			'page_id' => $page_id,
 			'title'   => get_the_title( $page_id ),
-			'digest'  => mb_strimwidth( $digest, 0, 80, '...' ),
+			'digest'  => function_exists( 'mb_strimwidth' ) ? mb_strimwidth( $digest, 0, 80, '...' ) : ( strlen( $digest ) > 80 ? substr( $digest, 0, 80 ) . '...' : $digest ),
 		)
 	);
 }

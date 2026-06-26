@@ -355,7 +355,7 @@
     // Transitional latency status label (Rendered independently below typing bubble to prevent stretching)
     var statusText = msgs.querySelector('.aicb-typing-status');
     if (!statusText) {
-      statusText = el('div', { 'class': 'aicb-typing-status' });
+      statusText = el('div', { 'class': 'aicb-typing-status', 'aria-live': 'polite', 'aria-atomic': 'true' });
       msgs.appendChild(statusText);
     }
     statusText.textContent = ''; // Reset

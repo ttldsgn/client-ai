@@ -293,7 +293,7 @@ function aicb_filter_conversation_messages( $messages ) {
 }
 
 /**
- * Helper: Execute wp_remote_post with a single retry on transient 502/503 errors and connection timeouts.
+ * Helper: Execute wp_remote_post with up to 2 retries (3 total attempts) on transient 502/503 errors and connection timeouts.
  */
 function aicb_remote_post_retry( $url, $args, $max_retries = 2 ) {
 	$attempt = 0;

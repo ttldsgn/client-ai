@@ -923,6 +923,15 @@ label:has(input[name="aicb_icon"]:checked) span {
 			var log = $('#aicb-cache-warm-log');
 			var nonce = $('#aicb_cache_warm_nonce').val();
 
+			// Capture current (unsaved) form values so warmers use the
+			// provider/model/indexing config visible on-screen, not stale
+			// saved options.
+			var warmConfig = {
+				provider: $('input[name="aicb_provider"]:checked').val(),
+				model:    $('#aicb_model').val(),
+				indexed_post_types: $('input[name="aicb_indexed_post_types[]"]:checked').map(function(){ return this.value; }).get()
+			};
+
 			btn.prop('disabled', true).text('Processing...');
 			panel.slideDown(200);
 			log.val('');
@@ -939,7 +948,8 @@ label:has(input[name="aicb_icon"]:checked) span {
 
 			$.post(ajaxurl, {
 				action: 'aicb_get_cache_warm_list',
-				nonce: nonce
+				nonce: nonce,
+				indexed_post_types: warmConfig.indexed_post_types
 			}, function(response) {
 				if (response.success && response.data.ids) {
 					var ids = response.data.ids;
@@ -970,7 +980,9 @@ label:has(input[name="aicb_icon"]:checked) span {
 						$.post(ajaxurl, {
 							action: 'aicb_warm_single_page_cache',
 							nonce: nonce,
-							page_id: pageId
+							page_id: pageId,
+							provider: warmConfig.provider,
+							model: warmConfig.model
 						}, function(pageResponse) {
 							if (pageResponse.success) {
 								appendLog('✓ Cached: ' + pageResponse.data.title + ' (' + pageResponse.data.digest + ')');
