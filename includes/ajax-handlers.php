@@ -605,54 +605,7 @@ function aicb_extract_keywords( $question ) {
 		'too',
 		'very',
 		'just',
-		'about',
-		'up',
-		'what',
-		'which',
-		'who',
-		'whom',
-		'this',
-		'that',
-		'these',
-		'those',
-		'i',
-		'me',
-		'my',
-		'myself',
-		'you',
-		'your',
-		'yours',
-		'yourself',
-		'he',
-		'him',
-		'his',
-		'himself',
-		'she',
-		'her',
-		'hers',
-		'herself',
-		'we',
-		'our',
-		'ours',
-		'ourselves',
-		'they',
-		'them',
-		'their',
-		'theirs',
-		'themselves',
-		'please',
-		'help',
-		'tell',
-		'know',
-		'want',
-		'need',
-		'like',
-		'get',
-		'thanks',
-		'thank',
-		'hi',
-		'hello',
-		'hey',
+		'about', 'up', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'i', 'me', 'my', 'myself', 'you', 'your', 'yours', 'yourself', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'we', 'our', 'ours', 'ourselves', 'they', 'them', 'their', 'theirs', 'themselves', 'please', 'help', 'tell', 'know', 'want', 'need', 'like', 'get', 'thanks', 'thank', 'hi', 'hello', 'hey'
 	);
 
 	$words    = preg_split( '/[^a-zA-Z0-9]+/', strtolower( $question ) );
@@ -906,4 +859,70 @@ function aicb_ajax_export_transcript() {
 	}
 
 	wp_send_json_success( array( 'message' => 'Transcript sent! Please check your email.' ) );
+}
+
+/* =========================================================
+   8. CACHE WARMER AJAX ENDPOINTS
+   ========================================================= */
+
+/**
+ * Retrieve the array of all eligible page IDs to compile/warm.
+ */
+add_action( 'wp_ajax_aicb_get_cache_warm_list', 'aicb_ajax_get_cache_warm_list' );
+function aicb_ajax_get_cache_warm_list() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => 'Access denied.' ), 403 );
+	}
+	check_ajax_referer( 'aicb_cache_warm', 'nonce' );
+
+	$allowed_types = (array) aicb_opt( 'indexed_post_types' );
+	if ( empty( $allowed_types ) ) {
+		wp_send_json_success( array( 'ids' => array() ) );
+	}
+
+	// Query all allowed, published posts/pages
+	$args = array(
+		'post_type'      => $allowed_types,
+		'posts_per_page' => -1,
+		'post_status'    => 'publish',
+		'fields'         => 'ids',
+	);
+	$query = new WP_Query( $args );
+	$ids   = $query->posts;
+
+	// Filter only the pages that are actually allowed for the chatbot
+	$allowed_ids = array();
+	foreach ( $ids as $id ) {
+		if ( aicb_is_page_allowed_for_chatbot( $id ) ) {
+			$allowed_ids[] = $id;
+		}
+	}
+
+	wp_send_json_success( array( 'ids' => $allowed_ids ) );
+}
+
+/**
+ * Compile and warm the summary cache for a single page ID.
+ */
+add_action( 'wp_ajax_aicb_warm_single_page_cache', 'aicb_ajax_warm_single_page_cache' );
+function aicb_ajax_warm_single_page_cache() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_send_json_error( array( 'message' => 'Access denied.' ), 403 );
+	}
+	check_ajax_referer( 'aicb_cache_warm', 'nonce' );
+
+	$page_id = isset( $_POST['page_id'] ) ? (int) $_POST['page_id'] : 0;
+	if ( ! $page_id || ! aicb_is_page_allowed_for_chatbot( $page_id ) ) {
+		wp_send_json_error( array( 'message' => 'Invalid Page ID.' ), 400 );
+	}
+
+	$digest = aicb_generate_page_digest_cache( $page_id );
+
+	wp_send_json_success(
+		array(
+			'page_id' => $page_id,
+			'title'   => get_the_title( $page_id ),
+			'digest'  => mb_strimwidth( $digest, 0, 80, '...' ),
+		)
+	);
 }

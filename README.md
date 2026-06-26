@@ -2,13 +2,21 @@
 
 A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supports native function calling, dynamic multi-provider LLM adapters, a searchable global holiday seeder, and advanced prompt engineering controls.
 
-[![Version](https://img.shields.io/badge/version-2.5.1-blue.svg)](https://github.com/ttldsgn/client-ai/releases) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](https://wordpress.org) [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](https://www.php.net/releases/) [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE) [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
+[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)](https://github.com/ttldsgn/client-ai/releases) [![WordPress](https://img.shields.io/badge/WordPress-6.0%2B-0073aa.svg)](https://wordpress.org) [![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4.svg)](https://www.php.net/releases/) [![License](https://img.shields.io/badge/license-GPL--2.0-green.svg)](LICENSE) [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-FF8F3F?logo=buy-me-a-coffee)](https://buymeacoffee.com/totaldsgn)
 
 * * *
 
 ## Important Disclosures & Privacy Notice
 
 To deliver advanced context-aware assistance and dynamically fetched calendar parameters, this plugin interfaces with the following external services. All data transmitted is limited strictly to the resources required to process requests.
+
+## 💰 API Costs & Transparency
+
+Because `ClientAI` is completely self-hosted and open-source, you don't pay a monthly subscription fee to use it. You only pay for the raw API tokens you consume through providers like Groq or OpenRouter.
+
+Thanks to our localized caching system and keyword-targeted RAG architecture, running costs are incredibly low (often under $1.00/month for standard business sites).
+
+👉 **[Read the full Transparency Statement & True Cost Estimation Guide](COSTS.md)** to see real-world cost calculations across different web traffic profiles.
 
 ### 1. Global Public Holidays Lookup (Nager.Date API)
 
@@ -33,7 +41,7 @@ Depending on your chosen configuration in the settings panel, this plugin forwar
 
 This plugin delivers a flexible, robust, and highly secure artificial intelligence assistant to your WordPress website. Built on a clean MVC modular architecture, it separates database logic, front-end visual presentation, and API routing.
 
-The chatbot leverages advanced **Strategy A retrieval mechanics** to digest localized page content dynamically, merging it with custom business FAQ rules, real-time temporal pivots, and deterministic schedule validation via native LLM tool-calling (function calling).
+The chatbot leverages advanced **Strategy A retrieval mechanics (RAG)** to digest localized page content dynamically, merging it with custom business FAQ rules, real-time temporal pivots, and deterministic schedule validation via native LLM tool-calling (function calling).
 
 * * *
 
@@ -42,12 +50,15 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 - **Multi-Provider AI Adapters**: Integrated connection adapters for Anthropic (Claude), Google AI Studio (Gemini), Groq (Llama), Cerebras, Mistral, and custom self-hosted OpenAI-compatible endpoints (Ollama, LM Studio, etc.).
 - **Multi-Language Support**: Auto-detect visitor browser language or set a fixed language. The AI responds natively in the specified language, making the chatbot accessible to international audiences without configuration changes.
 - **Visitor Feedback**: Optional thumbs up/down after each response. Satisfaction rate is displayed in the Dashboard, helping identify which answers need improvement.
-- **Conversation History**: Full threaded chat transcripts grouped by session. View the complete back-and-forth of any conversation in a chat-bubble interface from the admin area.
+- **Conversation History**: Full threaded chat transcripts grouped by session. View the complete back-and- forth of any conversation in a chat-bubble interface from the admin area.
 - **Deterministic Calendar Tool**: Empower the AI to answer business opening-hours questions using the check\_calendar function. It supports dynamic weekday/weekend defaults, specific date overrides, and annual recurring dates.
 - **Global Holiday Seeder**: Connects to the Nager.Date API with a searchable autocomplete country selector. This allows you to automatically pull and seed holidays from any supported country directly into your schedules database.
 - **Advanced Prompt Engineering**: A toggleable developer panel inside your settings page lets you inspect, edit, and experiment with the sub-prompts coordinating the AI's temporal pivots, tool-calling protocols, and negative constraints. Complete with a secure "Reset Engineering Templates" button.
 - **Import / Export Configuration**: Backup and restore your entire plugin configuration via the Settings page. Select specific sections to export (General Settings, Calendar & Hours, Advanced Prompt Engineering, Custom Q&A Entries, Custom Model Definitions) to a downloadable JSON file. API keys are securely excluded from exports. Import previously exported files to restore your configuration with a single click.
-- **Strategy A Context Retrieval**: Intelligently compiles clean text digests of your allowed post types on save, caching condensed summaries to significantly reduce API token usage and latency.
+- **Strategy A Adaptive Context Retrieval (RAG)**: Intelligently queries site-wide pages using standard WordPress keyword search (`'s'`) combined with a custom question cleaner. This ensures only relevant page digests are served to the AI, preventing bloated token usage. By applying `'suppress_filters' => true`, it securely indexes orphaned or non-menu pages without theme-level interference.
+- **Asynchronous Cache Warmer**: Includes an admin-side batch compiler. Instead of loading and summarizing pages synchronously during user chats (which causes server timeouts), administrators can warm the entire site-wide cache page-by-page comfortably under API rate limits using a beautiful real-time progress bar and log console.
+- **Asynchronous Save/Update Pre-Warming**: Automatically triggers a background AI summarization hook whenever an allowed post type is saved or updated in the editor, ensuring your site-wide knowledge base is always pre-warmed and up-to-date.
+- **Double-Layered Resiliency**: Automatic server-side connection retries on cURL timeouts combined with a client-side 3x recovery loop. If a query lags, an elegant status notice (*"⏳ Hang on, still working on it..."*) is shown to keep visitors engaged, gracefully falling back to standard support channels if a final drop occurs.
 - **Custom Q&A Overrides**: Prioritized semantic matching table to bypass expensive LLM inference entirely for exact business FAQs and keywords.
 - **Accessibility-First Design (WCAG 2.2 AA Principles)**: Engineered with accessibility as a core priority. The frontend chatbot uses strict keyboard focus management (capturing and returning focus cleanly to the launcher on open/close), a native Escape key closing hook, ARIA landmark and live announcer roles (role="dialog", role="log", aria-live="polite"), and full CSS support for prefers-reduced-motion browser media queries.
   
@@ -71,8 +82,9 @@ The chatbot leverages advanced **Strategy A retrieval mechanics** to digest loca
 1. Go to **Client AI > Settings** in your WordPress admin menu.
 2. Select your active AI Provider and input your API credentials.
 3. Choose your desired model from the dynamic catalog.
-4. Set your primary brand color, chatbot title, and default welcome message.
-5. Save your settings.
+4. Go to the **Knowledge & Persona** tab and click **Warming Cache / Rebuild Site-wide Summaries** to pre-warm your site-wide context database.
+5. Set your primary brand color, chatbot title, and default welcome message.
+6. Save your settings.
 
 ### 3. Display Options
 

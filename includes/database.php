@@ -237,7 +237,7 @@ function aicb_maybe_add_session_id_index() {
 	}
 
 	$index_name = 'session_id';
-	$has_index  = $wpdb->get_results( $wpdb->prepare( "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", $index_name ) );
+	$has_index = $wpdb->get_results( $wpdb->prepare( "SHOW INDEX FROM `{$table}` WHERE Key_name = %s", $index_name ) );
 	if ( empty( $has_index ) ) {
 		$result = $wpdb->query( "ALTER TABLE `{$table}` ADD INDEX `session_id` (`session_id`)" );
 		if ( false === $result ) {
@@ -336,7 +336,9 @@ function aicb_is_page_allowed_for_chatbot( $page_id ) {
 }
 
 /**
- * Lazy summaries caching generator.
+ * Retrieve cached summary context for a page. If the cache is unpopulated or expired,
+ * we safely fall back to the raw page content immediately to avoid nested synchronous 
+ * API requests during visitor chat sessions, keeping query latency at 0ms.
  */
 function aicb_get_page_context( $page_id ) {
 	if ( ! aicb_is_page_allowed_for_chatbot( $page_id ) ) {
@@ -356,9 +358,26 @@ function aicb_get_page_context( $page_id ) {
 		}
 	}
 
+	// Dynamic fallback directly to raw content to ensure instant chat lookups on the front-end
+	return aicb_get_raw_page_content( $page_id );
+}
+
+/**
+ * Decoupled Cache Generator: Summarizes the target page content via the AI provider and caches it.
+ * This is executed either on post save/update or via the asynchronous background settings warmer.
+ */
+function aicb_generate_page_digest_cache( $page_id ) {
 	$raw_content = aicb_get_raw_page_content( $page_id );
 	if ( empty( $raw_content ) || preg_match( '/^\[[^\]]+\]$/', $raw_content ) ) {
+		update_post_meta( $page_id, '_aicb_page_digest', $raw_content );
+		update_post_meta( $page_id, '_aicb_digest_timestamp', time() );
 		return $raw_content;
+	}
+
+	// Rate-limit API-based background caching processes to prevent connection locks on bulk-saves
+	static $local_runs = 0;
+	if ( $local_runs >= 3 ) {
+		return $raw_content; // Fall back safely to raw context to protect API limits
 	}
 
 	$provider = aicb_opt( 'provider' );
@@ -375,7 +394,9 @@ function aicb_get_page_context( $page_id ) {
 			'content' => $prompt,
 		),
 	);
-	$result   = aicb_call_ai( $provider, $model, $messages, 300 );
+
+	$local_runs++;
+	$result = aicb_call_ai( $provider, $model, $messages, 300 );
 
 	if ( is_wp_error( $result ) ) {
 		error_log( 'AICB Cache Generation Failure: ' . $result->get_error_message() );
@@ -483,23 +504,33 @@ function aicb_retrieve_relevant_contexts( $question, $current_page_id = 0 ) {
 		}
 	}
 
-	// Fix 2: Stop early if the current active page alone already exceeds the context cap
-	if ( $total_length >= 3000 ) {
+	// Stop early if the current active page alone already exceeds our comfortable budget
+	if ( $total_length >= 6000 ) {
 		return implode( "\n\n", $contexts );
 	}
 
+	// Standardize keyword clean-up for the search query
+	$search_term = aicb_clean_question_for_search( $question );
+
 	$args  = array(
-		'post_type'      => $allowed_types,
-		'posts_per_page' => 100,
-		'post_status'    => 'publish',
-		'fields'         => 'ids',
-		'post__not_in'   => $pulled_ids,
+		'post_type'        => $allowed_types,
+		'posts_per_page'   => 15, // Retrieve the top 15 most relevant pages
+		'post_status'      => 'publish',
+		'fields'           => 'ids',
+		'post__not_in'     => $pulled_ids,
+		's'                => $search_term, // Adaptive keyword matching
+		'suppress_filters' => true, // Bypass theme/plugin constraints that exclude non-menu pages
 	);
+
+	// Temporarily activate the permissive search filter to convert strict AND into flexible OR matching
+	add_filter( 'posts_search', 'aicb_permissive_search_filter', 10, 2 );
 	$query = new WP_Query( $args );
+	remove_filter( 'posts_search', 'aicb_permissive_search_filter', 10 );
+
 	if ( $query->have_posts() ) {
 		foreach ( $query->posts as $post_id ) {
-			// Fix 2: Stop fetching and break immediately if we exceed ~3,000 characters
-			if ( $total_length >= 3000 ) {
+			// Settle maximum context threshold to avoid token clutter or response latency
+			if ( $total_length >= 6000 ) {
 				break;
 			}
 			if ( ! aicb_is_page_allowed_for_chatbot( $post_id ) ) {
@@ -554,7 +585,7 @@ function aicb_calculate_us_federal_holidays( $year ) {
 			'rule'  => 'second monday of october',
 		),
 		array(
-			'label' => 'Veterans Day',
+			'label' => 'Page Parent',
 			'rule'  => 'November 11',
 		),
 		array(

@@ -339,125 +339,194 @@
     document.getElementById('aicb-send').setAttribute('disabled', 'true');
 
     /* Typing indicator */
-    var typing = el('div', { 'class': 'aicb-typing', 'aria-hidden': 'true' });
-    typing.appendChild(el('span', {}));
-    typing.appendChild(el('span', {}));
-    typing.appendChild(el('span', {}));
     var msgs = document.getElementById('aicb-messages');
-    msgs.appendChild(typing);
+    var typing = msgs.querySelector('.aicb-typing');
+    if (!typing) {
+      typing = el('div', { 'class': 'aicb-typing', 'aria-hidden': 'true' });
+      typing.appendChild(el('span', {}));
+      typing.appendChild(el('span', {}));
+      typing.appendChild(el('span', {}));
+      msgs.appendChild(typing);
+    }
     scrollToBottom();
 
     isBusy = true;
 
-    /* XHR (avoids fetch polyfill concerns on older WP hosts) */
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', cfg.ajaxUrl, true);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    // Transitional latency status label (Rendered independently below typing bubble to prevent stretching)
+    var statusText = msgs.querySelector('.aicb-typing-status');
+    if (!statusText) {
+      statusText = el('div', { 'class': 'aicb-typing-status' });
+      msgs.appendChild(statusText);
+    }
+    statusText.textContent = ''; // Reset
+    statusText.style.display = 'none';
 
-    xhr.onreadystatechange = function () {
-      if (xhr.readyState !== 4) return;
-      isBusy = false;
-      if (typing.parentNode) typing.parentNode.removeChild(typing);
-      inp.removeAttribute('disabled');
-      document.getElementById('aicb-send').removeAttribute('disabled');
-      inp.focus();
+    var currentAttempt = 1;
+    var maxAttempts = 3;
+    var latencyTimer = null;
 
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          var data = JSON.parse(xhr.responseText);
-          if (data.success && data.data && data.data.answer) {
-            addMsg(data.data.answer, 'bot');
+    function startLatencyTimer() {
+      clearLatencyTimer();
+      latencyTimer = setTimeout(function () {
+        if (isBusy) {
+          statusText.textContent = '⏳ Hang on, still working on it...';
+          statusText.style.display = 'block';
+          scrollToBottom();
+        }
+      }, 6000);
+    }
 
-            // Show thumbs up/down feedback if enabled
-            if (cfg.enableFeedback && data.data.log_id) {
-              addFeedback(data.data.log_id);
-            }
+    function clearLatencyTimer() {
+      if (latencyTimer) {
+        clearTimeout(latencyTimer);
+        latencyTimer = null;
+      }
+    }
 
-            // Set state based on server confirmation request [1.6.0]
-            if (data.data.awaiting_confirmation) {
-              awaitingHandover = true;
+    function executeRequest() {
+      startLatencyTimer();
+
+      /* XHR (avoids fetch polyfill concerns on older WP hosts) */
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', cfg.ajaxUrl, true);
+      xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState !== 4) return;
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          clearLatencyTimer();
+          isBusy = false;
+          if (typing.parentNode) typing.parentNode.removeChild(typing);
+          if (statusText.parentNode) statusText.parentNode.removeChild(statusText);
+          inp.removeAttribute('disabled');
+          document.getElementById('aicb-send').removeAttribute('disabled');
+          inp.focus();
+
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.success && data.data && data.data.answer) {
+              addMsg(data.data.answer, 'bot');
+
+              // Show thumbs up/down feedback if enabled
+              if (cfg.enableFeedback && data.data.log_id) {
+                addFeedback(data.data.log_id);
+              }
+
+              // Set state based on server confirmation request [1.6.0]
+              if (data.data.awaiting_confirmation) {
+                awaitingHandover = true;
+              } else {
+                awaitingHandover = false;
+              }
+
+              // Append buttons dynamically once confirmation completes [1.6.0]
+              if (data.data.handover) {
+                addHandoverButtons(data.data);
+              }
+
+              // Capture server-issued session ID for subsequent requests
+              if (data.data.session_id) {
+                sessionId = data.data.session_id;
+              }
             } else {
+              var msg = (data.data && data.data.message) ? data.data.message : 'Something went wrong. Please try again.';
+              addMsg(msg, 'error');
               awaitingHandover = false;
             }
-
-            // Append buttons dynamically once confirmation completes [1.6.0]
-            if (data.data.handover) {
-              addHandoverButtons(data.data);
-            }
-
-            // Capture server-issued session ID for subsequent requests
-            if (data.data.session_id) {
-              sessionId = data.data.session_id;
-            }
-          } else {
-            var msg = (data.data && data.data.message) ? data.data.message : 'Something went wrong. Please try again.';
-            addMsg(msg, 'error');
+          } catch (e) {
+            console.error('Chatbot parse error:', e);
+            addMsg('Unexpected response. Please try again.', 'error');
             awaitingHandover = false;
           }
-        } catch (e) {
-          console.error('Chatbot parse error:', e);
-          addMsg('Unexpected response. Please try again.', 'error');
-          awaitingHandover = false;
-        }
-      } else if (xhr.status === 429) {
-        addMsg('You\'ve sent too many messages. Please wait a moment.', 'error');
-        awaitingHandover = false;
-        startCooldown();
-      } else if (xhr.status === 502 || xhr.status === 503) {
-        // AI provider temporarily unavailable
-        var errMsg = 'The AI service is temporarily unavailable. Please try again in a moment.';
-        // If server sent an error message, try to use it
-        try {
-          var errData = JSON.parse(xhr.responseText);
-          if (errData.data && errData.data.message) {
-            errMsg = errData.data.message;
-          }
-        } catch (e) {}
-        addMsg(errMsg, 'error');
-        awaitingHandover = false;
-        startCooldown();
-      } else if (xhr.status === 500) {
-        addMsg('The AI assistant is not fully configured. Please contact support.', 'error');
-        awaitingHandover = false;
-      } else if (xhr.status === 400 || xhr.status === 403) {
-        // Reset sessionId on 403 Session Hijack / Expiration Gate Check
-        sessionId = '';
-        try {
-          var errData2 = JSON.parse(xhr.responseText);
-          var msg2 = (errData2.data && errData2.data.message) ? errData2.data.message : 'Something went wrong. Please try again.';
-          addMsg(msg2, 'error');
-        } catch (e) {
-          addMsg('Something went wrong. Please try again.', 'error');
-        }
-        awaitingHandover = false;
-      } else if (xhr.status === 0 || xhr.status === 408) {
-        // Network error or timeout
-        addMsg('Connection lost. Please check your internet and try again.', 'error');
-        awaitingHandover = false;
-      } else {
-        // Generic error - try to use server message if available
-        try {
-          var errData3 = JSON.parse(xhr.responseText);
-          var msg3 = (errData3.data && errData3.data.message) ? errData3.data.message : 'Connection error. Please try again.';
-          addMsg(msg3, 'error');
-        } catch (e) {
-          addMsg('Connection error. Please try again.', 'error');
-        }
-        awaitingHandover = false;
-        startCooldown();
-      }
-    };
+        } else {
+          // Intercept transient network disconnects, timeouts, or gateway drops
+          var isRetryable = (xhr.status === 0 || xhr.status === 408 || xhr.status === 502 || xhr.status === 503 || xhr.status === 504);
 
-    var params = encodeParams({
-      action:           'aicb_chat',
-      nonce:            cfg.nonce,
-      question:         question,
-      page_id:          cfg.pageId || 0,
-      session_id:       sessionId,
-      language:         cfg.language || (navigator.language || 'en'),
-      confirm_handover: awaitingHandover ? 'true' : 'false' // Forward confirmation loop state safely [1.6.0]
-    });
-    xhr.send(params);
+          if (isRetryable && currentAttempt < maxAttempts) {
+            currentAttempt++;
+            clearLatencyTimer();
+
+            // Settle latency indicator changes during third attempt
+            if (currentAttempt === 3) {
+              statusText.textContent = '⚠️ Re-attempting connection... (Attempt 3 of 3)';
+              statusText.style.display = 'block';
+              scrollToBottom();
+            }
+
+            // Silent backoff refire
+            setTimeout(function () {
+              executeRequest();
+            }, 1000);
+          } else {
+            // Handover to standard failure state
+            clearLatencyTimer();
+            isBusy = false;
+            if (typing.parentNode) typing.parentNode.removeChild(typing);
+            if (statusText.parentNode) statusText.parentNode.removeChild(statusText);
+            inp.removeAttribute('disabled');
+            document.getElementById('aicb-send').removeAttribute('disabled');
+            inp.focus();
+
+            if (xhr.status === 429) {
+              addMsg('You\'ve sent too many messages. Please wait a moment.', 'error');
+              awaitingHandover = false;
+              startCooldown();
+            } else if (xhr.status === 502 || xhr.status === 503) {
+              var errMsg = 'The AI service is temporarily unavailable. Please try again in a moment.';
+              try {
+                var errData = JSON.parse(xhr.responseText);
+                if (errData.data && errData.data.message) {
+                  errMsg = errData.data.message;
+                }
+              } catch (e) {}
+              addMsg(errMsg, 'error');
+              awaitingHandover = false;
+              startCooldown();
+            } else if (xhr.status === 500) {
+              addMsg('The AI assistant is not fully configured. Please contact support.', 'error');
+              awaitingHandover = false;
+            } else if (xhr.status === 400 || xhr.status === 403) {
+              sessionId = '';
+              try {
+                var errData2 = JSON.parse(xhr.responseText);
+                var msg2 = (errData2.data && errData2.data.message) ? errData2.data.message : 'Something went wrong. Please try again.';
+                addMsg(msg2, 'error');
+              } catch (e) {
+                addMsg('Something went wrong. Please try again.', 'error');
+              }
+              awaitingHandover = false;
+            } else if (xhr.status === 0 || xhr.status === 408) {
+              addMsg('Connection lost. We are having trouble reaching our AI servers. Please try again in a moment.', 'error');
+              awaitingHandover = false;
+            } else {
+              try {
+                var errData3 = JSON.parse(xhr.responseText);
+                var msg3 = (errData3.data && errData3.data.message) ? errData3.data.message : 'Connection error. Please try again.';
+                addMsg(msg3, 'error');
+              } catch (e) {
+                addMsg('Connection error. Please try again.', 'error');
+              }
+              awaitingHandover = false;
+              startCooldown();
+            }
+          }
+        }
+      };
+
+      var params = encodeParams({
+        action:           'aicb_chat',
+        nonce:            cfg.nonce,
+        question:         question,
+        page_id:          cfg.pageId || 0,
+        session_id:       sessionId,
+        language:         cfg.language || (navigator.language || 'en'),
+        confirm_handover: awaitingHandover ? 'true' : 'false' // Forward confirmation loop state safely [1.6.0]
+      });
+      xhr.send(params);
+    }
+
+    executeRequest();
   }
 
   /* ── Lead Capture Form ───────────────────────────────── */

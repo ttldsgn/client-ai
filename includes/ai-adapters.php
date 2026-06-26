@@ -293,20 +293,28 @@ function aicb_filter_conversation_messages( $messages ) {
 }
 
 /**
- * Helper: Execute wp_remote_post with a single retry on transient 502/503 errors.
+ * Helper: Execute wp_remote_post with a single retry on transient 502/503 errors and connection timeouts.
  */
-function aicb_remote_post_retry( $url, $args, $max_retries = 1 ) {
+function aicb_remote_post_retry( $url, $args, $max_retries = 2 ) {
 	$attempt = 0;
 	do {
 		$response = wp_remote_post( $url, $args );
 		if ( is_wp_error( $response ) ) {
+			$err_msg = $response->get_error_message();
+			$is_timeout = ( false !== stripos( $err_msg, 'timed out' ) || false !== stripos( $err_msg, 'timeout' ) );
+			// Intercept transient network drops and silently retry up to 2 times
+			if ( $is_timeout && $attempt < $max_retries ) {
+				$attempt++;
+				usleep( 500000 );
+				continue;
+			}
 			return $response;
 		}
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( $code !== 502 && $code !== 503 ) {
 			return $response;
 		}
-		++$attempt;
+		$attempt++;
 		if ( $attempt <= $max_retries ) {
 			usleep( 500000 );
 		}

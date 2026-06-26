@@ -749,3 +749,19 @@
     color: #ccc;
     margin: 0 2px;
 }
+
+/* Transitional status updates inside the typing indicator */
+#aicb-root .aicb-typing-status {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 4px;
+    font-style: italic;
+    display: none;
+    align-self: flex-start;
+    animation: aicbFadeIn 0.3s ease;
+    padding-left: 14px;
+}
+@keyframes aicbFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

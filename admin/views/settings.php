@@ -328,7 +328,25 @@ label:has(input[name="aicb_icon"]:checked) span {
 				<div style="border-top:1px solid #eee;margin-top:20px;padding-top:20px">
 					<p class="description"><?php esc_html_e( 'If you updated your global system prompt or changed model providers, we recommend flushing the cache to force a regeneration of factual summaries.', 'ai-chatbot' ); ?></p>
 					<button type="submit" form="aicb-flush-cache-form" class="button button-secondary"><?php esc_html_e( 'Flush All Cached Summaries', 'ai-chatbot' ); ?></button>
+					&nbsp;
+					<button type="button" id="aicb-warm-cache-btn" class="button button-secondary"><?php esc_html_e( 'Warming Cache / Rebuild Site-wide Summaries', 'ai-chatbot' ); ?></button>
 				</div>
+
+				<!-- Progressive Cache Warmer UI Status Container -->
+				<div id="aicb-cache-warm-panel" style="display:none; margin-top:20px; padding:15px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px;">
+					<h4 style="margin-top:0; margin-bottom:8px;"><?php esc_html_e( 'Cache Warm Progress', 'ai-chatbot' ); ?></h4>
+					<div style="background:#e2e8f0; border-radius:4px; height:12px; overflow:hidden; margin-bottom:8px; position:relative;">
+						<div id="aicb-cache-warm-bar" style="background:#2563eb; height:100%; width:0%; transition:width(0.3s) ease;"></div>
+					</div>
+					<div style="display:flex; justify-content:space-between; font-size:12px; color:#475569; margin-bottom:10px;">
+						<span id="aicb-cache-warm-status"><?php esc_html_e( 'Preparing page queue...', 'ai-chatbot' ); ?></span>
+						<span id="aicb-cache-warm-percent">0%</span>
+					</div>
+					<textarea id="aicb-cache-warm-log" readonly rows="5" style="width:100%; font-family:monospace; font-size:11px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; resize:none;"></textarea>
+				</div>
+
+				<!-- Nonce for AJAX Cache Warmer -->
+				<input type="hidden" id="aicb_cache_warm_nonce" value="<?php echo wp_create_nonce( 'aicb_cache_warm' ); ?>" />
 			</div>
 
 			<!-- ── AI PERSONA & IDENTITY ── -->
@@ -888,6 +906,106 @@ label:has(input[name="aicb_icon"]:checked) span {
 			} else {
 				$('#aicb-fixed-language-row').hide();
 			}
+		});
+
+		// Cache Warmer/Regenerator AJAX process
+		$('#aicb-warm-cache-btn').on('click', function(e) {
+			e.preventDefault();
+			if (!confirm('Rebuild and cache summaries for all allowed pages/posts? This will query the AI provider page-by-page. Existing entries will be updated.')) {
+				return;
+			}
+
+			var btn = $(this);
+			var panel = $('#aicb-cache-warm-panel');
+			var bar = $('#aicb-cache-warm-bar');
+			var status = $('#aicb-cache-warm-status');
+			var percent = $('#aicb-cache-warm-percent');
+			var log = $('#aicb-cache-warm-log');
+			var nonce = $('#aicb_cache_warm_nonce').val();
+
+			btn.prop('disabled', true).text('Processing...');
+			panel.slideDown(200);
+			log.val('');
+			bar.css('width', '0%');
+			percent.text('0%');
+
+			function appendLog(text) {
+				var val = log.val();
+				log.val(val + text + "\n");
+				log.scrollTop(log[0].scrollHeight);
+			}
+
+			appendLog('Retrieving allowed page queue...');
+
+			$.post(ajaxurl, {
+				action: 'aicb_get_cache_warm_list',
+				nonce: nonce
+			}, function(response) {
+				if (response.success && response.data.ids) {
+					var ids = response.data.ids;
+					var total = ids.length;
+					if (total === 0) {
+						status.text('No allowed pages/posts found to index.');
+						btn.prop('disabled', false).text('Warming Cache / Rebuild Site-wide Summaries');
+						appendLog('Finished: Queue is empty.');
+						return;
+					}
+
+					appendLog('Found ' + total + ' pages/posts to cache. Starting batch process...');
+					var currentIndex = 0;
+
+					function processNextPage() {
+						if (currentIndex >= total) {
+							bar.css('width', '100%');
+							percent.text('100%');
+							status.text('Cache warming complete!');
+							btn.prop('disabled', false).text('Warming Cache / Rebuild Site-wide Summaries');
+							appendLog('All pages cached successfully.');
+							return;
+						}
+
+						var pageId = ids[currentIndex];
+						status.text('Caching page ' + (currentIndex + 1) + ' of ' + total + '...');
+
+						$.post(ajaxurl, {
+							action: 'aicb_warm_single_page_cache',
+							nonce: nonce,
+							page_id: pageId
+						}, function(pageResponse) {
+							if (pageResponse.success) {
+								appendLog('✓ Cached: ' + pageResponse.data.title + ' (' + pageResponse.data.digest + ')');
+							} else {
+								appendLog('✗ Failed page ID ' + pageId + ': ' + (pageResponse.data ? pageResponse.data.message : 'Unknown error'));
+							}
+
+							currentIndex++;
+							var p = Math.round((currentIndex / total) * 100);
+							bar.css('width', p + '%');
+							percent.text(p + '%');
+
+							// Comfortable interval (1 second sleep) to respect API rate limits
+							setTimeout(processNextPage, 1000);
+						}).fail(function() {
+							appendLog('✗ Network error during page ID ' + pageId + ', skipping...');
+							currentIndex++;
+							var p = Math.round((currentIndex / total) * 100);
+							bar.css('width', p + '%');
+							percent.text(p + '%');
+							setTimeout(processNextPage, 1000);
+						});
+					}
+
+					processNextPage();
+				} else {
+					status.text('Failed to retrieve page queue.');
+					btn.prop('disabled', false).text('Warming Cache / Rebuild Site-wide Summaries');
+					appendLog('Error: ' + (response.data ? response.data.message : 'Unknown'));
+				}
+			}).fail(function() {
+				status.text('Network error retrieving queue.');
+				btn.prop('disabled', false).text('Warming Cache / Rebuild Site-wide Summaries');
+				appendLog('Error: Request failed.');
+			});
 		});
 	});
 })();
