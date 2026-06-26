@@ -659,10 +659,10 @@ function aicb_fetch_country_holidays( $year, $country_code = 'US' ) {
 					'hours_close' => '',
 				);
 			}
+			set_transient( $cache_key, $entries, DAY_IN_SECONDS );
 		}
 	}
 
-	set_transient( $cache_key, $entries, DAY_IN_SECONDS );
 	return $entries;
 }
 
