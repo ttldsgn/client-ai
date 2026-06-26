@@ -6,6 +6,10 @@ A pro-grade, modular, and highly secure AI chatbot engine for WordPress. It supp
 
 * * *
 
+## Important Disclosures & Privacy Notice
+
+To deliver advanced context-aware assistance and dynamically fetched calendar parameters, this plugin interfaces with the following external services. All data transmitted is limited strictly to the resources required to process requests.
+
 ### 1. Global Public Holidays Lookup (Nager.Date API)
 
 - **Service Provider**: Nager.Date API ([https://date.nager.at](https://date.nager.at))
@@ -24,10 +28,6 @@ Depending on your chosen configuration in the settings panel, this plugin forwar
 - **Mistral API** ([https://docs.mistral.ai/api](https://docs.mistral.ai/api/)): [Mistral Privacy Policy](https://legal.mistral.ai/terms/privacy-policy?language=en-US)
 
 * * *
-
-## Important Disclosures & Privacy Notice
-
-To deliver advanced context-aware assistance and dynamically fetched calendar parameters, this plugin interfaces with the following external services. All data transmitted is limited strictly to the resources required to process requests.
 
 ## 💰 API Costs & Transparency
 
