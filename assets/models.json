@@ -177,16 +177,7 @@
       "key_label": "API Key (if required)",
       "key_help": "For OpenAI-compatible endpoints, local Ollama, LM Studio, etc.",
       "docs_url": "",
-      "models": [
-        {
-          "id": "custom-model",
-          "name": "Custom Model",
-          "description": "Model ID sent to your custom endpoint",
-          "context_k": 0,
-          "recommended": false,
-          "supports_tools": true
-        }
-      ]
+      "models": []
     }
   ]
 }
